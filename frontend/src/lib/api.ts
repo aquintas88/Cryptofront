@@ -2,7 +2,7 @@
 import { useSesion } from './sesion';
 
 export interface EstadoServicio { status: string; servicio: string }
-export interface UsuarioPublico { id: string; email: string; nombre: string; rol: string; twoFactorActivo: boolean }
+export interface UsuarioPublico { id: string; email: string; nombre: string; rol: string; twoFactorActivo: boolean; idioma: 'es' | 'en' }
 
 export async function obtenerEstado(): Promise<EstadoServicio> {
   const res = await fetch('/health');

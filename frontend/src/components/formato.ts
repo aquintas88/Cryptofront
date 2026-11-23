@@ -1,24 +1,33 @@
-// Euros con separador de miles siempre (4.000,00 €), como el resto de cifras de la aplicación.
-export const eur = (n: number) => {
+// Formatos de cifras y fechas según el idioma de la empresa. Por defecto, español.
+import type { Idioma } from '../web/textos';
+import { LOCALE } from '../lib/zona';
+
+// Euros: español 4.000,00 € (separador de miles siempre); inglés €4,000.00.
+export const eur = (n: number, idioma: Idioma = 'es') => {
+  if (idioma === 'en') return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EUR' }).format(n);
   const [entero, decimales] = Math.abs(n).toFixed(2).split('.');
   const conSeparador = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${n < 0 ? '-' : ''}${conSeparador},${decimales}\u00A0€`;
+  return `${n < 0 ? '-' : ''}${conSeparador},${decimales} €`;
 };
-// Mes en formato «Noviembre de 2026» (mayúscula solo al inicio).
-export const mesLargo = (mes: string) => {
-  const t = new Date(mes + '-01T00:00:00Z').toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+export const pct = (n: number, idioma: Idioma = 'es') => {
+  const signo = n > 0 ? '+' : '';
+  const numero = new Intl.NumberFormat(LOCALE[idioma], { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n);
+  return idioma === 'en' ? `${signo}${numero}%` : `${signo}${numero} %`;
+};
+
+// Mes: «Noviembre de 2026» / «November 2026».
+export const mesLargo = (mes: string, idioma: Idioma = 'es') => {
+  const t = new Date(mes + '-01T00:00:00Z').toLocaleDateString(LOCALE[idioma], { month: 'long', year: 'numeric', timeZone: 'UTC' });
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
-export const pct = (n: number) =>
-  `${n > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} %`;
-export const fecha = (f: string | Date) =>
-  new Date(f).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+export const fecha = (f: string | Date, idioma: Idioma = 'es') =>
+  new Date(f).toLocaleDateString(LOCALE[idioma], { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// Nombres de producto para la zona de gestión (en español).
 export const NOMBRE_PRODUCTO: Record<string, string> = {
   BOT_TRADING: 'Bot de trading',
   PROYECTO_CRYPTO: 'Proyecto crypto',
   TOKEN_SHARE: 'Share (token)',
-};
-export const TIPO_MOVIMIENTO: Record<string, string> = {
-  APORTACION: 'Aportación', RETIRADA: 'Retirada', COMISION: 'Comisión de éxito',
-  RENDIMIENTO: 'Rendimiento', REPARTO: 'Pago mensual',
 };

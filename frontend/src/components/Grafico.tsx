@@ -1,21 +1,27 @@
 import { useMemo, useRef, useState } from 'react';
 import type { PuntoSerie } from '../lib/api';
-import { eur } from './formato';
+import type { Idioma } from '../web/textos';
+import { ZONA, LOCALE } from '../lib/zona';
+import { eur, pct } from './formato';
 
 // Gráfico interactivo sin dependencias: ejes de dinero y fecha, cursor con panel de datos,
 // navegación con ratón, dedo o flechas del teclado. La línea se dibuja al cargar.
 const W = 900, H = 360, ML = 76, MR = 24, MT = 24, MB = 40;
 
-const corto = (n: number) => {
+// Etiquetas de ejes: 17 k€ / €17k; 1,2 M€ / €1.2M.
+const corto = (n: number, idioma: Idioma) => {
   const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M€`;
-  if (abs >= 1000) return `${(n / 1000).toFixed(abs >= 10_000 ? 0 : 1)} k€`;
-  return `${Math.round(n)} €`;
+  const en = idioma === 'en';
+  const fmt = (v: string, unidad: string) => (en ? `€${v}${unidad}` : `${v} ${unidad}€`);
+  if (abs >= 1_000_000) return fmt((n / 1_000_000).toFixed(1), 'M');
+  if (abs >= 1000) return fmt((n / 1000).toFixed(abs >= 10_000 ? 0 : 1), 'k');
+  return en ? `€${Math.round(n)}` : `${Math.round(n)} €`;
 };
-const mes = (f: string) => new Date(f).toLocaleDateString('es-ES', { month: 'short', year: '2-digit', timeZone: 'UTC' });
-const dia = (f: string) => new Date(f).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const mes = (f: string, idioma: Idioma) => new Date(f).toLocaleDateString(LOCALE[idioma], { month: 'short', year: '2-digit', timeZone: 'UTC' });
+const dia = (f: string, idioma: Idioma) => new Date(f).toLocaleDateString(LOCALE[idioma], { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-export default function Grafico({ datos }: { datos: PuntoSerie[] }) {
+export default function Grafico({ datos, idioma = 'es' }: { datos: PuntoSerie[]; idioma?: Idioma }) {
+  const z = ZONA[idioma];
   const svgRef = useRef<SVGSVGElement>(null);
   const [activo, setActivo] = useState<number | null>(null);
 
@@ -33,7 +39,7 @@ export default function Grafico({ datos }: { datos: PuntoSerie[] }) {
     return { x, y, ticksY, ticksX };
   }, [datos]);
 
-  if (!escala) return <p className="py-16 text-center text-sm text-slate-500">Sin datos en este periodo.</p>;
+  if (!escala) return <p className="py-16 text-center text-sm text-slate-500">{z.gSinDatos}</p>;
   const { x, y, ticksY, ticksX } = escala;
 
   const linea = (campo: 'valor' | 'capitalAportado') =>
@@ -63,14 +69,14 @@ export default function Grafico({ datos }: { datos: PuntoSerie[] }) {
       <div className="mb-3 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm md:grid-cols-5">
         {p && activo !== null ? (
           <>
-            <div className="col-span-2 md:col-span-1"><p className="text-xs text-slate-500">Fecha</p><p className="font-semibold text-[#0d2240]">{dia(p.fecha)}</p></div>
-            <div><p className="text-xs text-slate-500">Valor</p><p className="font-semibold text-[#0d2240]">{eur(p.valor)}</p></div>
-            <div><p className="text-xs text-slate-500">Capital aportado</p><p className="font-semibold">{eur(p.capitalAportado)}</p></div>
-            <div><p className="text-xs text-slate-500">Beneficio</p><p className={`font-semibold ${beneficio >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{beneficio >= 0 ? '+' : ''}{eur(beneficio)}</p></div>
-            <div><p className="text-xs text-slate-500">Rentabilidad</p><p className="font-semibold">{p.capitalAportado ? `${(beneficio / p.capitalAportado * 100).toFixed(1)} %` : '—'}</p></div>
+            <div className="col-span-2 md:col-span-1"><p className="text-xs text-slate-500">{z.gFecha}</p><p className="font-semibold text-[#0d2240]">{dia(p.fecha, idioma)}</p></div>
+            <div><p className="text-xs text-slate-500">{z.gValor}</p><p className="font-semibold text-[#0d2240]">{eur(p.valor, idioma)}</p></div>
+            <div><p className="text-xs text-slate-500">{z.gCapital}</p><p className="font-semibold">{eur(p.capitalAportado, idioma)}</p></div>
+            <div><p className="text-xs text-slate-500">{z.gBeneficio}</p><p className={`font-semibold ${beneficio >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{beneficio >= 0 ? '+' : ''}{eur(beneficio, idioma)}</p></div>
+            <div><p className="text-xs text-slate-500">{z.gRentabilidad}</p><p className="font-semibold">{p.capitalAportado ? pct(beneficio / p.capitalAportado * 100, idioma) : '—'}</p></div>
           </>
         ) : (
-          <p className="col-span-2 text-slate-500 md:col-span-5">Pase el cursor sobre la gráfica o use ← → para ver los datos de cada fecha.</p>
+          <p className="col-span-2 text-slate-500 md:col-span-5">{z.gAyuda}</p>
         )}
       </div>
       <div>
@@ -81,7 +87,7 @@ export default function Grafico({ datos }: { datos: PuntoSerie[] }) {
           className="w-full touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-[#c9a24a]"
           role="img"
           tabIndex={0}
-          aria-label="Gráfico de evolución: valor de la inversión frente al capital aportado. Usa las flechas para recorrer las fechas."
+          aria-label={z.gAria}
           onPointerMove={(e) => indiceDesde(e.clientX)}
           onPointerDown={(e) => indiceDesde(e.clientX)}
           onPointerLeave={() => setActivo(null)}
@@ -98,12 +104,12 @@ export default function Grafico({ datos }: { datos: PuntoSerie[] }) {
           {ticksY.map((v, k) => (
             <g key={`y${k}`}>
               <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#0d2240" strokeOpacity=".08" />
-              <text x={ML - 10} y={y(v) + 4} textAnchor="end" fontSize="13" fill="#64748b">{corto(v)}</text>
+              <text x={ML - 10} y={y(v) + 4} textAnchor="end" fontSize="13" fill="#64748b">{corto(v, idioma)}</text>
             </g>
           ))}
           {ticksX.map((i) => (
             <text key={`x${i}`} x={x(i)} y={H - 12} textAnchor={i === 0 ? 'start' : i === datos.length - 1 ? 'end' : 'middle'} fontSize="13" fill="#64748b">
-              {mes(datos[i].fecha)}
+              {mes(datos[i].fecha, idioma)}
             </text>
           ))}
 
@@ -122,8 +128,8 @@ export default function Grafico({ datos }: { datos: PuntoSerie[] }) {
 
       </div>
       <div className="mt-3 flex flex-wrap gap-6 text-xs text-slate-600">
-        <span><b className="text-[#0d2240]">━━</b> Valor de su inversión</span>
-        <span><b className="text-slate-400">- - -</b> Capital aportado</span>
+        <span><b className="text-[#0d2240]">━━</b> {z.gLeyendaValor}</span>
+        <span><b className="text-slate-400">- - -</b> {z.gCapital}</span>
       </div>
     </div>
   );
