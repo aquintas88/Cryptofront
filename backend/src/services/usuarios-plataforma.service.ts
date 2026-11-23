@@ -1,6 +1,7 @@
 // Gestión de cuentas desde la plataforma (SUPERADMIN): altas, edición, claves temporales, bloqueos,
 // sesiones, ficha de inversor, movimientos y correcciones. Todo queda en la auditoría.
 import { randomUUID } from 'crypto';
+import ExcelJS from 'exceljs';
 import type { Prisma, Rol, ProductoInversion, TipoMovimiento } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { hashPassword } from '../lib/criptografia';
@@ -268,4 +269,36 @@ export async function listarAuditoria(f: { entidad?: string; accion?: string; ac
   const actores = await prisma.usuario.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, nombre: true } });
   const porId = new Map(actores.map((a) => [a.id, a]));
   return filas.map((r) => ({ ...r, actor: porId.get(r.actorId) ?? null }));
+}
+
+// Exportación de la auditoría a Excel con los mismos filtros. La propia exportación queda registrada.
+export async function exportarAuditoriaXlsx(actorId: string, tenantIdActor: string, f: Parameters<typeof listarAuditoria>[0]): Promise<Buffer> {
+  const filas = await listarAuditoria(f);
+  const libro = new ExcelJS.Workbook();
+  libro.creator = 'Cryptofront';
+  const hoja = libro.addWorksheet('Auditoría');
+  hoja.columns = [
+    { header: 'Fecha y hora (Madrid)', key: 'fecha', width: 22 },
+    { header: 'Quién', key: 'quien', width: 40 },
+    { header: 'Entidad', key: 'entidad', width: 22 },
+    { header: 'Entidad ID', key: 'entidadId', width: 28 },
+    { header: 'Acción', key: 'accion', width: 12 },
+    { header: 'Cambios', key: 'cambios', width: 80 },
+  ];
+  hoja.getRow(1).font = { bold: true };
+  for (const r of filas) {
+    hoja.addRow({
+      fecha: new Date(r.creadoEn).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+      quien: r.actor ? `${r.actor.nombre} <${r.actor.email}>` : 'Sistema',
+      entidad: r.entidad,
+      entidadId: r.entidadId ?? '',
+      accion: r.accion,
+      cambios: r.cambios ? JSON.stringify(r.cambios) : '',
+    });
+  }
+  await prisma.$transaction((tx) => registrarAuditoria(tx, {
+    tenantId: tenantIdActor, actorId, entidad: 'Auditoria', entidadId: null, accion: 'EVENTO',
+    cambios: { evento: 'exportación de auditoría', filas: filas.length },
+  }));
+  return Buffer.from(await libro.xlsx.writeBuffer());
 }

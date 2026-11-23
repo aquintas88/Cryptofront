@@ -97,6 +97,16 @@ describe('cuentas gestionadas por la plataforma', () => {
     expect(res.status).toBe(403);
   });
 
+  it('exporta la auditoría a Excel y la exportación queda registrada', async () => {
+    const res = await request(app).get('/api/plataforma/auditoria/excel').set('Authorization', `Bearer ${superToken}`)
+      .buffer(true).parse((r, cb) => { const d: Buffer[] = []; r.on('data', (c: Buffer) => d.push(c)); r.on('end', () => cb(null, Buffer.concat(d))); });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/spreadsheetml/);
+    expect((res.body as Buffer).subarray(0, 2).toString()).toBe('PK');
+    const registro = await prisma.registroAuditoria.findFirst({ where: { entidad: 'Auditoria' }, orderBy: { creadoEn: 'desc' } });
+    expect(registro?.actorId).toBe(superId);
+  });
+
   it('las altas quedan en la auditoría', async () => {
     await request(app).post('/api/plataforma/usuarios').set('Authorization', `Bearer ${superToken}`)
       .send({ email: 'auditado@ejemplo.test', nombre: 'Auditado Demo', rol: 'INVERSOR', tenantId: empresaId });

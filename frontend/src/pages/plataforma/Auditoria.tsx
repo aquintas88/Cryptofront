@@ -25,6 +25,7 @@ export default function Auditoria() {
   const q = useQuery({ queryKey: ['auditoria', filtros], queryFn: () => api.plataforma.auditoria(filtros) });
   const [pagina, setPagina] = useState(1);
   const [detalle, setDetalle] = useState<RegistroAuditoria | null>(null);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
 
   const filas = q.data?.registros ?? [];
   const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA));
@@ -52,6 +53,17 @@ export default function Auditoria() {
         <label className="text-xs text-slate-500">Desde<input type="date" value={filtros.desde} onChange={(e) => { setFiltros({ ...filtros, desde: e.target.value }); setPagina(1); }} className="mt-1 block rounded-lg border border-slate-300 px-3 py-1.5 text-sm" /></label>
         <label className="text-xs text-slate-500">Hasta<input type="date" value={filtros.hasta} onChange={(e) => { setFiltros({ ...filtros, hasta: e.target.value }); setPagina(1); }} className="mt-1 block rounded-lg border border-slate-300 px-3 py-1.5 text-sm" /></label>
       </div>
+      <div className="flex justify-end">
+        <button onClick={async () => {
+          try {
+            const blob = await api.plataforma.auditoriaXlsx(filtros);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'auditoria-cryptofront.xlsx'; a.click();
+            URL.revokeObjectURL(url);
+          } catch (err) { setErrorExport(err instanceof Error ? err.message : 'No se pudo exportar'); }
+        }} className="rounded-full border border-[#07152b] px-4 py-2 text-sm font-semibold text-[#07152b]">Exportar a Excel</button>
+      </div>
+      {errorExport && <p role="alert" className="text-sm text-red-700">{errorExport}</p>}
       {q.isError && <p className="text-sm text-red-700">No se pudo cargar la auditoría.</p>}
       <Table columns={columnas} data={visibles} keyExtractor={(r) => r.id} onRowClick={setDetalle} emptyMessage="Sin registros con esos filtros" />
       <Pagination page={pagina} totalPages={totalPaginas} onPage={setPagina} total={filas.length} />

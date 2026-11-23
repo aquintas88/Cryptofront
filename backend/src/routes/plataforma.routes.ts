@@ -92,21 +92,31 @@ router.patch('/usuarios/:id/movimientos/:movId', asincrona(async (req, res) => {
   res.json({ movimiento: await cuentas.corregirMovimiento(res.locals.usuario.id, req.params.id, req.params.movId, req.body ?? {}) });
 }));
 
-// Auditoría de la plataforma, con filtros.
-router.get('/auditoria', asincrona(async (req, res) => {
-  const q = req.query;
+// Filtros de la auditoría: «hasta» incluye el día completo.
+function filtrosAuditoria(q: Record<string, unknown>) {
   const fecha = (v: unknown) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? new Date(v) : undefined);
   const hasta = fecha(q.hasta);
-  res.json({
-    registros: await cuentas.listarAuditoria({
-      entidad: typeof q.entidad === 'string' ? q.entidad.slice(0, 60) : undefined,
-      accion: typeof q.accion === 'string' ? q.accion.slice(0, 20) : undefined,
-      actorId: typeof q.actorId === 'string' ? q.actorId.slice(0, 64) : undefined,
-      tenantId: typeof q.tenantId === 'string' ? q.tenantId.slice(0, 64) : undefined,
-      desde: fecha(q.desde),
-      hasta: hasta ? new Date(hasta.getTime() + 86_400_000 - 1) : undefined,
-    }),
-  });
+  return {
+    entidad: typeof q.entidad === 'string' ? q.entidad.slice(0, 60) : undefined,
+    accion: typeof q.accion === 'string' ? q.accion.slice(0, 20) : undefined,
+    actorId: typeof q.actorId === 'string' ? q.actorId.slice(0, 64) : undefined,
+    tenantId: typeof q.tenantId === 'string' ? q.tenantId.slice(0, 64) : undefined,
+    desde: fecha(q.desde),
+    hasta: hasta ? new Date(hasta.getTime() + 86_400_000 - 1) : undefined,
+  };
+}
+
+// Auditoría de la plataforma, con filtros.
+router.get('/auditoria', asincrona(async (req, res) => {
+  res.json({ registros: await cuentas.listarAuditoria(filtrosAuditoria(req.query)) });
+}));
+
+// Exportación a Excel con los mismos filtros.
+router.get('/auditoria/excel', asincrona(async (req, res) => {
+  const buffer = await cuentas.exportarAuditoriaXlsx(res.locals.usuario.id, res.locals.usuario.tenantId, filtrosAuditoria(req.query));
+  res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.set('Content-Disposition', 'attachment; filename="auditoria-cryptofront.xlsx"');
+  res.send(buffer);
 }));
 
 // Cargas de datos de inversión de todas las empresas (estado y recuento; sin datos personales).

@@ -90,6 +90,13 @@ export const api = {
       peticion<{ movimiento: unknown }>(`/api/plataforma/usuarios/${id}/movimientos`, { method: 'POST', body: JSON.stringify(datos) }),
     corregirMovimiento: (id: string, movId: string, datos: { importe?: number; fecha?: string; motivo: string }) =>
       peticion<{ movimiento: unknown }>(`/api/plataforma/usuarios/${id}/movimientos/${movId}`, { method: 'PATCH', body: JSON.stringify(datos) }),
+    auditoriaXlsx: async (filtros: Record<string, string>) => {
+      const qs = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v)).toString();
+      const token = useSesion.getState().accessToken;
+      const res = await fetch(`/api/plataforma/auditoria/excel${qs ? `?${qs}` : ''}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) throw new Error(`No se pudo exportar (${res.status})`);
+      return res.blob();
+    },
     auditoria: (filtros: Record<string, string>) => {
       const qs = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v)).toString();
       return peticion<{ registros: RegistroAuditoria[] }>(`/api/plataforma/auditoria${qs ? `?${qs}` : ''}`);
