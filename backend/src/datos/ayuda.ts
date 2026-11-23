@@ -20,7 +20,7 @@ export const ARTICULOS: Articulo[] = [
     categoria: 'Organización',
     titulo: 'Empresas, sucursales, usuarios y roles',
     contenido:
-      'La empresa tiene sucursales y usuarios. Hay tres roles: SUPERADMIN (administra la plataforma), USUARIO y INVERSOR. Nadie puede desactivarse ni cambiarse su propio rol.',
+      'La empresa tiene sucursales y usuarios. Hay dos roles: SUPERADMIN (administra la plataforma) e INVERSOR (consulta su inversión). Nadie puede desactivarse ni cambiarse su propio rol.',
   },
   {
     id: 'auditoria-secretos',

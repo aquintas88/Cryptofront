@@ -78,7 +78,7 @@ describe('fichas', () => {
     const empresa = await crearEmpresa();
     const token = await directorDe(empresa.id);
     const suc = await prisma.sucursal.create({ data: { tenantId: empresa.id, nombre: 'Centro' } });
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO', sucursalId: suc.id });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR', sucursalId: suc.id });
     const res = await request(app).get(`/api/organizacion/usuarios/${usuario.id}`).set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.usuario.sucursal.nombre).toBe('Centro');
@@ -99,7 +99,7 @@ describe('fichas', () => {
   it('la ficha de un usuario de otra empresa responde 404', async () => {
     const a = await crearEmpresa('A');
     const b = await crearEmpresa('B');
-    const { usuario: ajeno } = await crearUsuario({ tenantId: b.id, rol: 'USUARIO' });
+    const { usuario: ajeno } = await crearUsuario({ tenantId: b.id, rol: 'INVERSOR' });
     const tokenA = await directorDe(a.id);
     const res = await request(app).get(`/api/organizacion/usuarios/${ajeno.id}`).set('Authorization', `Bearer ${tokenA}`);
     expect(res.status).toBe(404);

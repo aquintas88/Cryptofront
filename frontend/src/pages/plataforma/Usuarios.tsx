@@ -7,9 +7,9 @@ import { Modal } from '../../components/ui/Modal';
 import { sortBy, useSortable } from '../../components/ui/tabla';
 
 const POR_PAGINA = 20;
-const ROLES = ['INVERSOR', 'USUARIO', 'SUPERADMIN'];
+const ROLES = ['INVERSOR', 'SUPERADMIN'];
 const ETIQUETA_ROL: Record<string, string> = {
-  INVERSOR: 'Inversor', USUARIO: 'Usuario', SUPERADMIN: 'Superadmin',
+  INVERSOR: 'Inversor', SUPERADMIN: 'Superadmin',
 };
 type Campo = 'nombre' | 'email' | 'rol' | 'ultimoAcceso';
 

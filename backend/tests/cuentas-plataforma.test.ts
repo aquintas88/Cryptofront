@@ -91,7 +91,7 @@ describe('cuentas gestionadas por la plataforma', () => {
   });
 
   it('solo SUPERADMIN gestiona cuentas', async () => {
-    const { usuario, password } = await crearUsuario({ tenantId: empresaId, rol: 'USUARIO' });
+    const { usuario, password } = await crearUsuario({ tenantId: empresaId, rol: 'INVERSOR' });
     const token = await tokenDe(app, usuario.email, password);
     const res = await request(app).get('/api/plataforma/usuarios').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(403);

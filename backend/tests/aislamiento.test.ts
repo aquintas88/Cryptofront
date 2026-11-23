@@ -13,7 +13,7 @@ async function escenario() {
   const empresaB = await crearEmpresa('Empresa B');
   const dirA = await crearUsuario({ tenantId: empresaA.id, rol: 'SUPERADMIN' });
   const dirB = await crearUsuario({ tenantId: empresaB.id, rol: 'SUPERADMIN' });
-  const usrB = await crearUsuario({ tenantId: empresaB.id, rol: 'USUARIO' });
+  const usrB = await crearUsuario({ tenantId: empresaB.id, rol: 'INVERSOR' });
   const sucursalB = await prisma.sucursal.create({ data: { tenantId: empresaB.id, nombre: 'Sede B' } });
   return {
     empresaA,
@@ -71,7 +71,7 @@ describe('aislamiento entre empresas', () => {
 
   it('no se puede asignar a un usuario una sucursal de otra empresa', async () => {
     const e = await escenario();
-    const propio = await crearUsuario({ tenantId: e.empresaA.id, rol: 'USUARIO' });
+    const propio = await crearUsuario({ tenantId: e.empresaA.id, rol: 'INVERSOR' });
     const res = await request(app)
       .patch(`/api/organizacion/usuarios/${propio.usuario.id}`)
       .set('Authorization', `Bearer ${e.tokenA}`)
@@ -90,23 +90,23 @@ describe('aislamiento entre empresas', () => {
         nombre: 'Nuevo',
         email: 'cruce@ejemplo.test',
         password: 'contraseña-ficticia-larga-1',
-        rol: 'USUARIO',
+        rol: 'INVERSOR',
         sucursalId: e.sucursalB.id,
       });
     expect(res.status).toBe(400);
   });
 
-  it('un usuario de la empresa B no ve las sucursales de la empresa A', async () => {
+  it('el superadmin de la empresa B no ve las sucursales de la empresa A', async () => {
     const e = await escenario();
     const sucursalA = await prisma.sucursal.create({ data: { tenantId: e.empresaA.id, nombre: 'Sede A' } });
-    const res = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${e.tokenUsrB}`);
+    const res = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${e.tokenB}`);
     expect(res.status).toBe(200);
     expect(res.body.datos.map((s: { id: string }) => s.id)).not.toContain(sucursalA.id);
   });
 
   it('un token de empresa no abre rutas de plataforma', async () => {
     const e = await escenario();
-    const usuarioA = await crearUsuario({ tenantId: e.empresaA.id, rol: 'USUARIO' });
+    const usuarioA = await crearUsuario({ tenantId: e.empresaA.id, rol: 'INVERSOR' });
     const tokenUsuarioA = await tokenDe(app, usuarioA.usuario.email);
     const res = await request(app).get('/api/plataforma/empresas').set('Authorization', `Bearer ${tokenUsuarioA}`);
     expect(res.status).toBe(403);

@@ -7,7 +7,7 @@ import { crearEmpresa, crearUsuario, limpiarBD, tokenDe } from './helpers';
 
 const app = crearApp({ limiteAuth: 1000 });
 
-async function sesion(rol: 'SUPERADMIN' | 'USUARIO', tenantId: string) {
+async function sesion(rol: 'SUPERADMIN' | 'INVERSOR', tenantId: string) {
   const { usuario } = await crearUsuario({ tenantId, rol });
   return { usuario, token: await tokenDe(app, usuario.email) };
 }
@@ -21,8 +21,8 @@ describe('alertas', () => {
 
   it('cada usuario ve sus alertas y las de la empresa; el director ve todas', async () => {
     const empresa = await crearEmpresa();
-    const yo = await sesion('USUARIO', empresa.id);
-    const otro = await sesion('USUARIO', empresa.id);
+    const yo = await sesion('INVERSOR', empresa.id);
+    const otro = await sesion('INVERSOR', empresa.id);
     const dir = await sesion('SUPERADMIN', empresa.id);
     await crearAlerta(empresa.id, { tipo: 'PARA_MI', mensaje: 'x', destinatarioId: yo.usuario.id });
     await crearAlerta(empresa.id, { tipo: 'PARA_OTRO', mensaje: 'x', destinatarioId: otro.usuario.id });
@@ -36,8 +36,8 @@ describe('alertas', () => {
 
   it('resolver una alerta ajena responde 404 para quien no es destinatario', async () => {
     const empresa = await crearEmpresa();
-    const otro = await sesion('USUARIO', empresa.id);
-    const yo = await sesion('USUARIO', empresa.id);
+    const otro = await sesion('INVERSOR', empresa.id);
+    const yo = await sesion('INVERSOR', empresa.id);
     const alerta = await crearAlerta(empresa.id, { tipo: 'AJENA', mensaje: 'x', destinatarioId: otro.usuario.id });
     const res = await request(app).post(`/api/alertas/${alerta.id}/resolver`).set('Authorization', `Bearer ${yo.token}`);
     expect(res.status).toBe(404);
@@ -45,7 +45,7 @@ describe('alertas', () => {
 
   it('el destinatario resuelve su alerta y queda registrado', async () => {
     const empresa = await crearEmpresa();
-    const yo = await sesion('USUARIO', empresa.id);
+    const yo = await sesion('INVERSOR', empresa.id);
     const alerta = await crearAlerta(empresa.id, { tipo: 'MIA', mensaje: 'x', destinatarioId: yo.usuario.id });
     const res = await request(app).post(`/api/alertas/${alerta.id}/resolver`).set('Authorization', `Bearer ${yo.token}`);
     expect(res.status).toBe(200);
@@ -56,7 +56,7 @@ describe('alertas', () => {
   it('no se puede asignar una alerta a un usuario de otra empresa', async () => {
     const a = await crearEmpresa('A');
     const b = await crearEmpresa('B');
-    const ajeno = await sesion('USUARIO', b.id);
+    const ajeno = await sesion('INVERSOR', b.id);
     await expect(crearAlerta(a.id, { tipo: 'X', mensaje: 'x', destinatarioId: ajeno.usuario.id })).rejects.toThrow();
   });
 });
@@ -70,7 +70,7 @@ describe('tickets', () => {
 
   it('cualquier usuario crea un ticket y queda con su historial inicial', async () => {
     const empresa = await crearEmpresa();
-    const yo = await sesion('USUARIO', empresa.id);
+    const yo = await sesion('INVERSOR', empresa.id);
     const res = await request(app).post('/api/tickets').set('Authorization', `Bearer ${yo.token}`)
       .send({ asunto: 'No abre', descripcion: 'La pantalla queda en blanco.', criticidad: 'ALTA' });
     expect(res.status).toBe(201);
@@ -80,8 +80,8 @@ describe('tickets', () => {
 
   it('cada usuario ve solo sus tickets; el director ve todos', async () => {
     const empresa = await crearEmpresa();
-    const a = await sesion('USUARIO', empresa.id);
-    const b = await sesion('USUARIO', empresa.id);
+    const a = await sesion('INVERSOR', empresa.id);
+    const b = await sesion('INVERSOR', empresa.id);
     const dir = await sesion('SUPERADMIN', empresa.id);
     for (const s of [a, b]) {
       await request(app).post('/api/tickets').set('Authorization', `Bearer ${s.token}`).send({ asunto: 'T', descripcion: 'D' });
@@ -92,8 +92,8 @@ describe('tickets', () => {
 
   it('un usuario no puede ver ni comentar el ticket de otro (404)', async () => {
     const empresa = await crearEmpresa();
-    const a = await sesion('USUARIO', empresa.id);
-    const b = await sesion('USUARIO', empresa.id);
+    const a = await sesion('INVERSOR', empresa.id);
+    const b = await sesion('INVERSOR', empresa.id);
     const t = await request(app).post('/api/tickets').set('Authorization', `Bearer ${a.token}`).send({ asunto: 'T', descripcion: 'D' });
     const ver = await request(app).get(`/api/tickets/${t.body.ticket.id}`).set('Authorization', `Bearer ${b.token}`);
     const comenta = await request(app).post(`/api/tickets/${t.body.ticket.id}/comentarios`).set('Authorization', `Bearer ${b.token}`).send({ texto: 'hola' });
@@ -103,7 +103,7 @@ describe('tickets', () => {
 
   it('solo el director cambia estado y cada cambio queda en el historial', async () => {
     const empresa = await crearEmpresa();
-    const a = await sesion('USUARIO', empresa.id);
+    const a = await sesion('INVERSOR', empresa.id);
     const dir = await sesion('SUPERADMIN', empresa.id);
     const t = await request(app).post('/api/tickets').set('Authorization', `Bearer ${a.token}`).send({ asunto: 'T', descripcion: 'D' });
     const denegado = await request(app).patch(`/api/tickets/${t.body.ticket.id}`).set('Authorization', `Bearer ${a.token}`).send({ estado: 'CERRADO' });
@@ -116,7 +116,7 @@ describe('tickets', () => {
 
   it('valida el estado y la criticidad', async () => {
     const empresa = await crearEmpresa();
-    const a = await sesion('USUARIO', empresa.id);
+    const a = await sesion('INVERSOR', empresa.id);
     const res = await request(app).post('/api/tickets').set('Authorization', `Bearer ${a.token}`)
       .send({ asunto: 'T', descripcion: 'D', criticidad: 'CRITICA_NO_EXISTE' });
     expect(res.status).toBe(400);
@@ -173,9 +173,9 @@ describe('agenda', () => {
 
   it('solo el superadmin gestiona la agenda; un usuario no crea ni edita eventos', async () => {
     const empresa = await crearEmpresa();
-    const normal = await sesion('USUARIO', empresa.id);
+    const normal = await sesion('INVERSOR', empresa.id);
     const coord = await sesion('SUPERADMIN', empresa.id);
-    const otroCoord = await sesion('USUARIO', empresa.id);
+    const otroCoord = await sesion('INVERSOR', empresa.id);
     expect((await request(app).post('/api/agenda').set('Authorization', `Bearer ${normal.token}`).send(evento)).status).toBe(403);
     const creado = await request(app).post('/api/agenda').set('Authorization', `Bearer ${coord.token}`).send(evento);
     expect(creado.status).toBe(201);

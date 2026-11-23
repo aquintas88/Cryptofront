@@ -61,7 +61,7 @@ describe('rentabilidad mensual y cargas', () => {
     const plat = await crearPlataforma();
     const tokenSA = await tokenDe(app, plat.usuario.email);
     const empresa = await crearEmpresa('Cargas tabla');
-    const dir = (await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' })).usuario;
+    const dir = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
     await prisma.cargaInversion.create({
       data: { tenantId: empresa.id, fechaCarga: new Date('2026-11-16T00:30:00Z'), origen: 'prueba', estado: 'OK', filasRecibidas: 5, filasAceptadas: 5 },
     });

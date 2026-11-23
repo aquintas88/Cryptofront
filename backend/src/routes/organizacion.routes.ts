@@ -12,7 +12,7 @@ import * as plantillas from '../services/plantillas.service';
 // Gestión de la propia empresa. Todas las rutas filtran por el tenant del usuario autenticado.
 // Módulo de organización: solo SUPERADMIN (los roles de empresa se han eliminado).
 const router = Router();
-router.use(requiereSesion);
+router.use(requiereSesion, requiereRol('SUPERADMIN'));
 
 function nombreValido(valor: unknown, nombre: string): string {
   const limpio = texto(valor, nombre, { max: 80 });

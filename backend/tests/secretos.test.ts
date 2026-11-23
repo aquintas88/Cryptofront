@@ -92,7 +92,7 @@ describe('secretos de integración', () => {
 
   it('el coordinador no puede ver ni escribir secretos', async () => {
     const empresa = await crearEmpresa();
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
     const token = await tokenDe(app, usuario.email);
     const lista = await request(app).get('/api/organizacion/secretos').set('Authorization', `Bearer ${token}`);
     const escribe = await request(app).put('/api/organizacion/secretos').set('Authorization', `Bearer ${token}`)

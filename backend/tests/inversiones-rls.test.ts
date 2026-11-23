@@ -16,7 +16,7 @@ async function escenario() {
   const inv1 = (await crearUsuario({ tenantId: empresaA.id, rol: 'INVERSOR' })).usuario;
   const inv2 = (await crearUsuario({ tenantId: empresaA.id, rol: 'INVERSOR' })).usuario;
   const inv3 = (await crearUsuario({ tenantId: empresaB.id, rol: 'INVERSOR' })).usuario;
-  const usuarioSinRol = (await crearUsuario({ tenantId: empresaA.id, rol: 'USUARIO' })).usuario;
+  const usuarioSinRol = (await crearUsuario({ tenantId: empresaA.id, rol: 'INVERSOR' })).usuario;
 
   const ctxDirA: UsuarioContexto = { id: dirA.id, tenantId: empresaA.id, rol: 'SUPERADMIN' };
   const ctxDirB: UsuarioContexto = { id: dirB.id, tenantId: empresaB.id, rol: 'SUPERADMIN' };
@@ -54,7 +54,7 @@ async function escenario() {
     inv1: { id: inv1.id, tenantId: empresaA.id, rol: 'INVERSOR' } as UsuarioContexto,
     inv2: { id: inv2.id, tenantId: empresaA.id, rol: 'INVERSOR' } as UsuarioContexto,
     inv3: { id: inv3.id, tenantId: empresaB.id, rol: 'INVERSOR' } as UsuarioContexto,
-    sinRol: { id: usuarioSinRol.id, tenantId: empresaA.id, rol: 'USUARIO' } as UsuarioContexto,
+    sinRol: { id: usuarioSinRol.id, tenantId: empresaA.id, rol: 'INVERSOR' } as UsuarioContexto,
     pos1, pos2, pos3: pos3Creada,
   };
 }

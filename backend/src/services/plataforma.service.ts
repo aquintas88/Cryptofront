@@ -19,7 +19,7 @@ export async function crearEmpresa(nombre: string, director?: DatosDirector, idi
       const usuario = await tx.usuario.create({
         data: {
           tenantId: empresa.id,
-          rol: 'USUARIO',
+          rol: 'INVERSOR',
           email: director.email,
           nombre: director.nombre,
           passwordHash: hashPassword(director.password),

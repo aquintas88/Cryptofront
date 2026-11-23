@@ -6,11 +6,10 @@ import { PASSWORD_PRUEBA, crearEmpresa, crearUsuario, emailUnico, limpiarBD, tok
 
 // Permisos por rol. Los roles de empresa (director y coordinador) se han eliminado:
 //   SUPERADMIN: gestiona la organización (sucursales y usuarios).
-//   USUARIO:    lee sucursales; no ve usuarios ni escribe.
 //   INVERSOR:   solo la zona de inversores.
 const app = crearApp({ limiteAuth: 1000 });
 
-async function tokenDeRol(tenantId: string, rol: 'SUPERADMIN' | 'USUARIO') {
+async function tokenDeRol(tenantId: string, rol: 'SUPERADMIN' | 'INVERSOR') {
   const { usuario } = await crearUsuario({ tenantId, rol });
   return tokenDe(app, usuario.email);
 }
@@ -33,29 +32,20 @@ describe('roles dentro de la empresa', () => {
 
   it('un usuario no puede crear sucursales ni usuarios', async () => {
     const empresa = await crearEmpresa();
-    const token = await tokenDeRol(empresa.id, 'USUARIO');
+    const token = await tokenDeRol(empresa.id, 'INVERSOR');
     const suc = await request(app).post('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`).send({ nombre: 'X' });
     const usr = await request(app)
       .post('/api/organizacion/usuarios')
       .set('Authorization', `Bearer ${token}`)
-      .send({ nombre: 'X', email: emailUnico(), password: PASSWORD_PRUEBA, rol: 'USUARIO' });
+      .send({ nombre: 'X', email: emailUnico(), password: PASSWORD_PRUEBA, rol: 'INVERSOR' });
     expect(suc.status).toBe(403);
-    expect(usr.status).toBe(403);
-  });
-
-  it('el usuario puede leer sucursales pero no ver usuarios', async () => {
-    const empresa = await crearEmpresa();
-    const token = await tokenDeRol(empresa.id, 'USUARIO');
-    const suc = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`);
-    const usr = await request(app).get('/api/organizacion/usuarios').set('Authorization', `Bearer ${token}`);
-    expect(suc.status).toBe(200);
     expect(usr.status).toBe(403);
   });
 
   it('el superadmin puede crear usuarios de empresa', async () => {
     const empresa = await crearEmpresa();
     const token = await tokenDeRol(empresa.id, 'SUPERADMIN');
-    for (const rol of ['USUARIO', 'USUARIO']) {
+    for (const rol of ['INVERSOR', 'INVERSOR']) {
       const res = await request(app)
         .post('/api/organizacion/usuarios')
         .set('Authorization', `Bearer ${token}`)
@@ -80,6 +70,6 @@ describe('roles dentro de la empresa', () => {
     const u = await prisma.usuario.create({
       data: { tenantId: empresa.id, email: emailUnico('defecto'), nombre: 'Por defecto', passwordHash: 'x' },
     });
-    expect(u.rol).toBe('USUARIO');
+    expect(u.rol).toBe('INVERSOR');
   });
 });

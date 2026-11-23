@@ -11,7 +11,7 @@ import { registrarAuditoria, diferencias } from '../lib/auditoria';
 import { conContextoPlataforma } from '../lib/contexto-rls';
 import { esDuplicado } from './plataforma.service';
 
-const ROLES: Rol[] = ['SUPERADMIN', 'USUARIO', 'INVERSOR'];
+const ROLES: Rol[] = ['SUPERADMIN', 'INVERSOR'];
 const PRODUCTOS: ProductoInversion[] = ['BOT_TRADING', 'PROYECTO_CRYPTO', 'TOKEN_SHARE'];
 const TIPOS_MANUALES: TipoMovimiento[] = ['APORTACION', 'RETIRADA'];
 

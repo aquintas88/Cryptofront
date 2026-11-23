@@ -8,7 +8,7 @@ import { diferencias, registrarAuditoria, sanear } from '../lib/auditoria';
 import { esDuplicado } from './plataforma.service';
 import { ParamsListado, ordenPrisma, paginacion, respuestaListado } from '../lib/listados';
 
-const ROLES_DE_EMPRESA = ['USUARIO'] as const;
+const ROLES_DE_EMPRESA = ['INVERSOR'] as const;
 
 // Campos devueltos al cliente. Nunca hash, ni secretos 2FA, ni tokens.
 const SELECCION_USUARIO = {

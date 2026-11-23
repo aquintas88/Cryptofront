@@ -45,7 +45,7 @@ describe('ayuda y novedades (API)', () => {
   });
 
   it('un usuario con sesión lee el índice, un artículo y las novedades', async () => {
-    const { usuario } = await crearUsuario({ rol: 'USUARIO' });
+    const { usuario } = await crearUsuario({ rol: 'INVERSOR' });
     const token = await tokenDe(app, usuario.email);
     const indice = await request(app).get('/api/ayuda').set('Authorization', `Bearer ${token}`);
     expect(indice.body.articulos.length).toBe(ARTICULOS.length);
@@ -57,7 +57,7 @@ describe('ayuda y novedades (API)', () => {
   });
 
   it('un artículo inexistente responde 404', async () => {
-    const { usuario } = await crearUsuario({ rol: 'USUARIO' });
+    const { usuario } = await crearUsuario({ rol: 'INVERSOR' });
     const token = await tokenDe(app, usuario.email);
     const res = await request(app).get('/api/ayuda/no-existe').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(404);

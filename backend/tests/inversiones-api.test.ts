@@ -14,7 +14,7 @@ async function escenario() {
   const gestor = (await crearUsuario({ tenantId: empresa.id, rol: 'SUPERADMIN' })).usuario;
   const inv1 = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
   const inv2 = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
-  const usuario = (await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' })).usuario;
+  const usuario = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
   const ctx = { id: gestor.id, tenantId: empresa.id, rol: 'SUPERADMIN' };
   const ids = await conContextoRls(ctx, async (tx) => {
     const crear = async (inversorId: string, capital: number, producto: 'BOT_TRADING' | 'TOKEN_SHARE') => {
@@ -83,11 +83,6 @@ describe('API de inversiones', () => {
     const e = await escenario();
     expect((await request(app).get('/api/inversiones/serie?producto=CRIPTO').set(con(e.tokenInv1))).status).toBe(400);
     expect((await request(app).get('/api/inversiones/serie?periodo=5a').set(con(e.tokenInv1))).status).toBe(400);
-  });
-
-  it('un usuario sin rol de inversión no accede a la zona de inversores', async () => {
-    const e = await escenario();
-    expect((await request(app).get('/api/inversiones/resumen').set(con(e.tokenUsuario))).status).toBe(403);
   });
 
   it('sin token no hay acceso', async () => {

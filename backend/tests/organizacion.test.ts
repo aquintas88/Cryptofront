@@ -33,7 +33,7 @@ describe('organización: sucursales y usuarios', () => {
 
     it('un usuario sin rol de director no puede crear sucursales', async () => {
       const empresa = await crearEmpresa();
-      const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+      const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
       const token = await tokenDe(app, usuario.email);
       const res = await request(app)
         .post('/api/organizacion/sucursales')
@@ -71,7 +71,7 @@ describe('organización: sucursales y usuarios', () => {
       const res = await request(app)
         .post('/api/organizacion/usuarios')
         .set('Authorization', `Bearer ${token}`)
-        .send({ nombre: 'Nuevo', email, password: PASSWORD_PRUEBA, rol: 'USUARIO' });
+        .send({ nombre: 'Nuevo', email, password: PASSWORD_PRUEBA, rol: 'INVERSOR' });
       expect(res.status).toBe(201);
       expect(res.body.usuario.email).toBe(email);
       expect(JSON.stringify(res.body)).not.toContain('passwordHash');
@@ -95,7 +95,7 @@ describe('organización: sucursales y usuarios', () => {
       const res = await request(app)
         .post('/api/organizacion/usuarios')
         .set('Authorization', `Bearer ${token}`)
-        .send({ nombre: 'Corto', email: emailUnico(), password: 'corta', rol: 'USUARIO' });
+        .send({ nombre: 'Corto', email: emailUnico(), password: 'corta', rol: 'INVERSOR' });
       expect(res.status).toBe(400);
     });
 
@@ -105,7 +105,7 @@ describe('organización: sucursales y usuarios', () => {
       const res = await request(app)
         .post('/api/organizacion/usuarios')
         .set('Authorization', `Bearer ${token}`)
-        .send({ nombre: 'Duplicado', email: usuario.email, password: PASSWORD_PRUEBA, rol: 'USUARIO' });
+        .send({ nombre: 'Duplicado', email: usuario.email, password: PASSWORD_PRUEBA, rol: 'INVERSOR' });
       expect(res.status).toBe(409);
     });
 
@@ -124,7 +124,7 @@ describe('organización: sucursales y usuarios', () => {
     it('desactivar a un usuario cierra su acceso de inmediato', async () => {
       const empresa = await crearEmpresa();
       const { token } = await directorDe(empresa.id);
-      const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+      const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
       const tokenUsuario = await tokenDe(app, usuario.email);
 
       const res = await request(app)
@@ -150,13 +150,13 @@ describe('organización: sucursales y usuarios', () => {
       const degradar = await request(app)
         .patch(`/api/organizacion/usuarios/${usuario.id}`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ rol: 'USUARIO' });
+        .send({ rol: 'INVERSOR' });
       expect(degradar.status).toBe(409);
     });
 
     it('un usuario sin rol de director no ve la lista de usuarios', async () => {
       const empresa = await crearEmpresa();
-      const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+      const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
       const token = await tokenDe(app, usuario.email);
       const res = await request(app).get('/api/organizacion/usuarios').set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(403);

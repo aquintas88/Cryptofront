@@ -104,7 +104,7 @@ describe('plantillas PDF', () => {
     const token = await directorDe(empresa.id);
     const alta = await request(app).post('/api/organizacion/plantillas').set('Authorization', `Bearer ${token}`)
       .send({ nombre: 'Compartida', contenido: CONTENIDO });
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
     const tokenCoord = await tokenDe(app, usuario.email);
     const crea = await request(app).post('/api/organizacion/plantillas').set('Authorization', `Bearer ${tokenCoord}`)
       .send({ nombre: 'Nueva', contenido: CONTENIDO });

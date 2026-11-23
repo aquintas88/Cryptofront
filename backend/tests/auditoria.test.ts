@@ -54,7 +54,7 @@ describe('auditoría', () => {
   it('editar un usuario registra solo la diferencia', async () => {
     const empresa = await crearEmpresa();
     const { token } = await directorDe(empresa.id);
-    const { usuario: objetivo } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+    const { usuario: objetivo } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
     await request(app).patch(`/api/organizacion/usuarios/${objetivo.id}`).set('Authorization', `Bearer ${token}`).send({ nombre: 'Nombre nuevo' });
     const reg = await prisma.registroAuditoria.findFirstOrThrow({
       where: { tenantId: empresa.id, entidad: 'Usuario', entidadId: objetivo.id, accion: 'EDITAR' },
@@ -68,7 +68,7 @@ describe('auditoría', () => {
     await request(app)
       .post('/api/organizacion/usuarios')
       .set('Authorization', `Bearer ${token}`)
-      .send({ nombre: 'Nuevo', email: emailUnico('aud'), password: PASSWORD_PRUEBA, rol: 'USUARIO' });
+      .send({ nombre: 'Nuevo', email: emailUnico('aud'), password: PASSWORD_PRUEBA, rol: 'INVERSOR' });
     const registros = await prisma.registroAuditoria.findMany({ where: { tenantId: empresa.id } });
     expect(JSON.stringify(registros)).not.toContain('scrypt$');
     expect(JSON.stringify(registros)).not.toContain('passwordHash');
@@ -76,7 +76,7 @@ describe('auditoría', () => {
 
   it('un login fallido deja un evento de seguridad', async () => {
     const empresa = await crearEmpresa();
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
     await request(app).post('/api/auth/login').send({ email: usuario.email, password: 'mala-clave' });
     const eventos = await prisma.registroAuditoria.findMany({ where: { tenantId: empresa.id, accion: 'EVENTO' } });
     expect(eventos.map((e) => (e.cambios as { evento: string }).evento)).toContain('FALLO_AUTENTICACION');
@@ -84,7 +84,7 @@ describe('auditoría', () => {
 
   it('cinco fallos dejan además el evento de bloqueo', async () => {
     const empresa = await crearEmpresa();
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
     for (let i = 0; i < 5; i++) {
       await request(app).post('/api/auth/login').send({ email: usuario.email, password: 'mala-clave' });
     }
@@ -100,7 +100,7 @@ describe('auditoría', () => {
     expect(ok.status).toBe(200);
     expect(ok.body.datos.length).toBeGreaterThan(0);
 
-    const { usuario: coord } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
+    const { usuario: coord } = await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' });
     const tokenCoord = await tokenDe(app, coord.email);
     const denegado = await request(app).get('/api/organizacion/auditoria').set('Authorization', `Bearer ${tokenCoord}`);
     expect(denegado.status).toBe(403);

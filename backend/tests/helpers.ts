@@ -48,7 +48,7 @@ export async function crearPlataforma() {
 export async function crearUsuario(
   opciones: {
     tenantId?: string;
-    rol?: 'SUPERADMIN' | 'SUPERADMIN' | 'USUARIO' | 'INVERSOR';
+    rol?: 'SUPERADMIN' | 'SUPERADMIN' | 'INVERSOR' | 'INVERSOR';
     email?: string;
     password?: string;
     activo?: boolean;
@@ -62,7 +62,7 @@ export async function crearUsuario(
       tenantId,
       email: opciones.email ?? emailUnico(),
       nombre: 'Usuario ficticio',
-      rol: opciones.rol ?? 'USUARIO',
+      rol: opciones.rol ?? 'INVERSOR',
       passwordHash: hashPassword(password),
       activo: opciones.activo ?? true,
       sucursalId: opciones.sucursalId ?? null,
