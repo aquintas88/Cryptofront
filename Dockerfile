@@ -9,6 +9,9 @@ RUN npm ci
 COPY backend/ .
 RUN npx prisma generate && npm run build
 
+# Proceso sin privilegios de root (usuario «node» de la imagen base).
+USER node
+
 EXPOSE 3000
 # Decisión D-01: migraciones versionadas. Se aplican antes de arrancar; nunca db push en producción.
 # Las migraciones usan DATABASE_URL_ADMIN (el rol kira_app no puede crear tablas). La app usa DATABASE_URL.

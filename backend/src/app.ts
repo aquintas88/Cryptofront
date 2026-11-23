@@ -21,6 +21,8 @@ export function crearApp(opciones: OpcionesApp = {}) {
   const app = express();
 
   app.disable('x-powered-by');
+  // Railway envía las peticiones a través de un proxy: el límite de intentos debe contar la IP real del cliente.
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.use(express.json({ limit: '100kb' }));
 
