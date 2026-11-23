@@ -108,6 +108,12 @@ export default function Inversor() {
                     : 'Aún no hay cargas de datos para su cartera.'}
                 </p>
               )}
+              {renta.data?.rentabilidadAnualizadaPct != null && (
+                <p className="mt-1 text-sm text-slate-700">
+                  Rentabilidad anualizada desde el alta: <b className={renta.data.rentabilidadAnualizadaPct >= 0 ? 'text-emerald-700' : 'text-red-700'}>{pct(renta.data.rentabilidadAnualizadaPct)}</b>
+                  <span className="text-slate-500"> (estimación a partir de la serie mensual; no garantizada)</span>
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-4 overflow-x-auto">

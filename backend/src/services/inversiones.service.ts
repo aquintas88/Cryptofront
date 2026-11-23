@@ -200,15 +200,29 @@ function rentabilidadMeses(d: Awaited<ReturnType<typeof cargar>>) {
       acumuladaPct: redondear((acumulado - 1) * 100),
       valorFin: redondear(valor),
       gananciaEur: redondear(ganancia),
+      factor: acumulado,
     };
   });
+}
+
+// Rentabilidad anualizada desde el alta: el factor acumulado de la serie mensual elevado a 365/días.
+// No se calcula con periodos cortos (menos de 90 días), porque daría cifras engañosas.
+export function rentabilidadAnualizada(meses: { factor: number }[], fechaAlta: Date, hoy = new Date()): number | null {
+  const ultimo = meses[meses.length - 1];
+  if (!ultimo) return null;
+  const dias = (+hoy - +fechaAlta) / 86_400_000;
+  if (dias < 90) return null;
+  return redondear((Math.pow(ultimo.factor, 365 / dias) - 1) * 100);
 }
 
 export async function rentabilidadInversor(u: UsuarioContexto) {
   const d = await cargar(u, u.id);
   const carga = await ultimaCarga(u.tenantId);
-  const meses = rentabilidadMeses(d).map(({ gananciaEur: _g, ...resto }) => resto);
-  return { meses, ...carga };
+  const raw = rentabilidadMeses(d);
+  const meses = raw.map(({ gananciaEur: _g, factor: _f, ...resto }) => resto);
+  const primera = d.posiciones[0]?.fechaAlta;
+  const rentabilidadAnualizadaPct = primera ? rentabilidadAnualizada(raw, primera) : null;
+  return { meses, rentabilidadAnualizadaPct, ...carga };
 }
 
 // Última carga correcta de la empresa y la próxima prevista (semanal, estimada).

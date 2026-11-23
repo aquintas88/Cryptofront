@@ -81,7 +81,7 @@ export interface ResumenGestion {
 export type Producto = 'BOT_TRADING' | 'PROYECTO_CRYPTO' | 'TOKEN_SHARE';
 
 export interface RentabilidadMes { mes: string; parcial: boolean; rentabilidadPct: number; acumuladaPct: number; valorFin: number }
-export interface Rentabilidad { meses: RentabilidadMes[]; ultimaCarga: string | null; proximaCarga: string | null; frecuencia: 'semanal' }
+export interface Rentabilidad { meses: RentabilidadMes[]; rentabilidadAnualizadaPct: number | null; ultimaCarga: string | null; proximaCarga: string | null; frecuencia: 'semanal' }
 export interface CargaPlataforma {
   id: string; fechaCarga: string; origen: string; estado: 'OK' | 'ERROR';
   filasRecibidas: number; filasAceptadas: number; erroresResumen: string | null; tenant: { nombre: string };
