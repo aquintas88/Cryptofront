@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [prepro, main]
+  pull_request:
+    branches: [prepro, main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        # Contraseña de un contenedor efímero de CI, derivada del id de ejecución. No es un secreto.
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}
+          POSTGRES_DB: cryptofront_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Cliente Prisma y tipos
+        run: |
+          npx prisma generate
+          npm run typecheck
+
+      - name: Auditoría de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Build
+        run: npm run build
+
+      - name: Migraciones (administrador)
+        env:
+          DATABASE_URL: postgresql://postgres:ci-${{ github.run_id }}@localhost:5432/cryptofront_test
+        run: npx prisma migrate deploy
+
+      - name: Rol de la aplicación sin privilegios (D-03)
+        env:
+          PGPASSWORD: ci-${{ github.run_id }}
+        run: |
+          APP_PW="$(openssl rand -hex 24)"
+          echo "::add-mask::$APP_PW"
+          echo "APP_PW=$APP_PW" >> "$GITHUB_ENV"
+          psql -h localhost -U postgres -d cryptofront_test -v ON_ERROR_STOP=1 \
+            -v dbname=cryptofront_test -v password="$APP_PW" \
+            -f ../scripts/db/crear-rol-app.sql
+
+      - name: Pruebas de integración como rol de la aplicación
+        env:
+          JWT_SECRET: ${{ github.run_id }}-ci-${{ github.run_number }}-jwt-de-prueba-largo
+          NODE_ENV: test
+        # APP_PW viene de GITHUB_ENV: solo es visible desde el shell, no desde el contexto env.
+        # Clave de cifrado de secretos generada en cada ejecución. Nunca se guarda.
+        run: SECRETS_MASTER_KEY="$(openssl rand -base64 32)" DATABASE_URL="postgresql://kira_app:${APP_PW}@localhost:5432/cryptofront_test" npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Tipos y build
+        run: npm run build
+
+  ayuda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Función nueva con ayuda actualizada
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            RANGO="origin/${{ github.base_ref }}..HEAD"
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            RANGO="HEAD~1..HEAD"
+          else
+            RANGO="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          sh scripts/check-ayuda.sh "$RANGO"

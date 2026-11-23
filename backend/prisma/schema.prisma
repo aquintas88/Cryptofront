@@ -1,0 +1,338 @@
+// Cryptofront · esquema de base de datos.
+// Fase 2.0: solo la entidad de empresa (tenant). El resto llega en 2.1–2.5.
+// Regla: toda entidad de negocio lleva tenantId (obligatorio, indexado).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Roles de la plataforma.
+enum Rol {
+  SUPERADMIN
+  DIRECTOR_EMPRESA
+  COORDINADOR
+  USUARIO
+  INVERSOR
+}
+
+// Empresa (tenant). La empresa de la plataforma (esPlataforma) aloja a los usuarios SUPERADMIN.
+model Tenant {
+  id           String               @id @default(cuid())
+  nombre       String
+  activa       Boolean              @default(true)
+  esPlataforma Boolean              @default(false)
+  creadaEn     DateTime             @default(now())
+  sucursales   Sucursal[]
+  secretos     SecretoIntegracion[]
+  plantillas   PlantillaDocumento[]
+  alertas      Alerta[]
+  tickets      Ticket[]
+  eventos      Evento[]
+  usuarios     Usuario[]
+  condiciones  CondicionesInversion[]
+  posiciones   PosicionInversion[]
+  movimientos  MovimientoInversion[]
+  valores      ValorDiarioInversion[]
+  cargas       CargaInversion[]
+}
+
+model Sucursal {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  nombre    String
+  direccion String?
+  activa    Boolean   @default(true)
+  creadaEn  DateTime  @default(now())
+  usuarios  Usuario[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+model Usuario {
+  id                        String           @id @default(cuid())
+  tenantId                  String
+  tenant                    Tenant           @relation(fields: [tenantId], references: [id])
+  sucursalId                String?
+  sucursal                  Sucursal?        @relation(fields: [sucursalId], references: [id])
+  rol                       Rol              @default(USUARIO)
+  email                     String           @unique
+  nombre                    String
+  passwordHash              String
+  activo                    Boolean          @default(true)
+  intentosFallidos          Int              @default(0)
+  bloqueadoHasta            DateTime?
+  twoFactorActivo           Boolean          @default(false)
+  // Secretos TOTP cifrados (AES-256-GCM). Nunca en claro, nunca en respuestas de la API.
+  twoFactorSecretoCifrado   String?
+  twoFactorPendienteCifrado String?
+  creadoEn                  DateTime         @default(now())
+  sesiones                  SesionRefresco[]
+  posicionesInversor        PosicionInversion[]
+
+  @@index([tenantId])
+}
+
+// Token de refresco guardado solo como hash. Revocado = revocadaEn no nulo.
+model SesionRefresco {
+  id         String    @id @default(cuid())
+  usuarioId  String
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiraEn   DateTime
+  revocadaEn DateTime?
+  creadaEn   DateTime  @default(now())
+
+  @@index([usuarioId])
+}
+
+// Registro de auditoría. Inmutable para la aplicación: el rol kira_app solo puede insertar y leer.
+// No tiene relación con Tenant a propósito: el registro sobrevive a cualquier cambio de datos.
+model RegistroAuditoria {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  actorId   String
+  entidad   String
+  entidadId String?
+  accion    String // CREAR | EDITAR | BORRAR | EVENTO
+  cambios   Json?
+  creadoEn  DateTime @default(now())
+
+  @@index([tenantId, creadoEn])
+  @@index([entidad, entidadId])
+}
+
+// Secreto de integración de un cliente (clave de API, token). Cifrado en reposo.
+// ambitoId vacío = empresa; si no, id de la sucursal a la que pertenece.
+// Nunca se devuelve su valor por la API ni se registra en la auditoría.
+model SecretoIntegracion {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  integracion   String
+  campo         String
+  ambitoId      String   @default("")
+  valorCifrado  String
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([tenantId, integracion, campo, ambitoId])
+}
+
+// Plantilla de documento de texto con variables {{nombre}}. Se convierte en PDF bajo demanda.
+model PlantillaDocumento {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  nombre        String
+  contenido     String
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+enum EstadoAlerta {
+  ABIERTA
+  RESUELTA
+}
+
+enum EstadoTicket {
+  ABIERTO
+  EN_CURSO
+  RESUELTO
+  CERRADO
+}
+
+enum Criticidad {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+// Alerta para un usuario (o para la empresa si no tiene destinatario).
+model Alerta {
+  id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  tipo           String
+  mensaje        String
+  estado         EstadoAlerta @default(ABIERTA)
+  destinatarioId String?
+  creadaEn       DateTime     @default(now())
+  resueltaEn     DateTime?
+
+  @@index([tenantId, estado])
+  @@index([destinatarioId])
+}
+
+// Ticket de soporte dentro de la empresa.
+model Ticket {
+  id            String            @id @default(cuid())
+  tenantId      String
+  tenant        Tenant            @relation(fields: [tenantId], references: [id])
+  asunto        String
+  descripcion   String
+  estado        EstadoTicket      @default(ABIERTO)
+  criticidad    Criticidad        @default(MEDIA)
+  creadoPorId   String
+  asignadoAId   String?
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+  historial     TicketHistorial[]
+
+  @@index([tenantId, estado])
+  @@index([creadoPorId])
+}
+
+model TicketHistorial {
+  id       String   @id @default(cuid())
+  ticketId String
+  ticket   Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  autorId  String
+  cambio   String
+  creadoEn DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+// Evento de agenda. Las fechas se guardan en UTC; la API exige zona horaria explícita.
+model Evento {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  titulo        String
+  descripcion   String?
+  inicio        DateTime
+  fin           DateTime
+  ubicacion     String?
+  creadoPorId   String
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@index([tenantId, inicio])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Inversiones.
+// AISLAMIENTO: además del filtro de la aplicación, Postgres aplica RLS (migración *_inversiones_rls).
+// Cada fila lleva inversorId; las claves compuestas (id, tenantId, inversorId) impiden que un
+// movimiento o un valor se asocie a una posición de otro inversor o de otra empresa.
+// ─────────────────────────────────────────────────────────────
+
+enum ProductoInversion {
+  BOT_TRADING
+  PROYECTO_CRYPTO
+  TOKEN_SHARE
+}
+
+enum EstadoPosicion {
+  ACTIVA
+  FINALIZADA
+}
+
+enum TipoMovimiento {
+  APORTACION
+  RETIRADA
+  COMISION
+  RENDIMIENTO
+  REPARTO
+}
+
+// Condiciones por producto y fecha de vigencia. La comisión de éxito del bot es general de la empresa.
+model CondicionesInversion {
+  id               String           @id @default(cuid())
+  tenantId         String
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  producto         ProductoInversion
+  vigenteDesde     DateTime
+  comisionExitoPct Decimal?         @db.Decimal(6, 3)
+  tasaFijaPct      Decimal?         @db.Decimal(6, 3)
+  tasaMensualPct   Decimal?         @db.Decimal(6, 3)
+  meses            Int?
+  fechaSalida      DateTime?
+  creadaEn         DateTime         @default(now())
+
+  @@index([tenantId, producto, vigenteDesde])
+}
+
+model PosicionInversion {
+  id              String          @id @default(cuid())
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  inversorId      String
+  inversor        Usuario         @relation(fields: [inversorId], references: [id])
+  producto        ProductoInversion
+  estado          EstadoPosicion  @default(ACTIVA)
+  fechaAlta       DateTime
+  fechaBaja       DateTime?
+  capitalAportado Decimal         @db.Decimal(14, 2)
+  idOrigen        String?
+  creadaEn        DateTime        @default(now())
+  movimientos     MovimientoInversion[]
+  valores         ValorDiarioInversion[]
+
+  // Clave compuesta para que los hijos solo puedan apuntar a una posición de su mismo inversor y empresa.
+  @@unique([id, tenantId, inversorId])
+  @@unique([tenantId, idOrigen])
+  @@index([tenantId, inversorId])
+}
+
+model MovimientoInversion {
+  id         String         @id @default(cuid())
+  tenantId   String
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  posicionId String
+  inversorId String
+  posicion   PosicionInversion @relation(fields: [posicionId, tenantId, inversorId], references: [id, tenantId, inversorId])
+  tipo       TipoMovimiento
+  importe    Decimal        @db.Decimal(14, 2)
+  fecha      DateTime
+  idOrigen   String
+  creadoEn   DateTime       @default(now())
+
+  @@unique([tenantId, idOrigen])
+  @@index([posicionId, fecha])
+  @@index([tenantId, inversorId, fecha])
+}
+
+// Valor de cada posición en un día. Un registro por posición y día.
+model ValorDiarioInversion {
+  id         String         @id @default(cuid())
+  tenantId   String
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  posicionId String
+  inversorId String
+  posicion   PosicionInversion @relation(fields: [posicionId, tenantId, inversorId], references: [id, tenantId, inversorId])
+  fecha      DateTime       @db.Date
+  valor      Decimal        @db.Decimal(14, 2)
+  idOrigen   String
+  creadoEn   DateTime       @default(now())
+
+  @@unique([posicionId, fecha])
+  @@unique([tenantId, idOrigen])
+  @@index([tenantId, inversorId, fecha])
+}
+
+// Registro de cada carga de datos desde los sistemas de la empresa (estado y recuento, sin datos personales).
+model CargaInversion {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  fechaCarga     DateTime
+  origen         String
+  estado         String   // OK | ERROR
+  filasRecibidas Int
+  filasAceptadas Int
+  erroresResumen String?
+  creadaEn       DateTime @default(now())
+
+  @@index([tenantId, fechaCarga])
+}

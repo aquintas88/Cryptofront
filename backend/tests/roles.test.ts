@@ -1,0 +1,85 @@
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import request from 'supertest';
+import { crearApp } from '../src/app';
+import { prisma } from '../src/lib/prisma';
+import { PASSWORD_PRUEBA, crearEmpresa, crearUsuario, emailUnico, limpiarBD, tokenDe } from './helpers';
+
+// Permisos por rol dentro de una empresa:
+//   DIRECTOR_EMPRESA: gestiona sucursales y usuarios.
+//   COORDINADOR:      lee sucursales y usuarios; no escribe.
+//   USUARIO:          lee sucursales; no ve usuarios ni escribe.
+const app = crearApp({ limiteAuth: 1000 });
+
+async function tokenDeRol(tenantId: string, rol: 'DIRECTOR_EMPRESA' | 'COORDINADOR' | 'USUARIO') {
+  const { usuario } = await crearUsuario({ tenantId, rol });
+  return tokenDe(app, usuario.email);
+}
+
+describe('roles dentro de la empresa', () => {
+  beforeEach(limpiarBD);
+  afterAll(async () => {
+    await limpiarBD();
+    await prisma.$disconnect();
+  });
+
+  it('el coordinador puede leer sucursales y usuarios de su empresa', async () => {
+    const empresa = await crearEmpresa();
+    const token = await tokenDeRol(empresa.id, 'COORDINADOR');
+    const suc = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`);
+    const usr = await request(app).get('/api/organizacion/usuarios').set('Authorization', `Bearer ${token}`);
+    expect(suc.status).toBe(200);
+    expect(usr.status).toBe(200);
+  });
+
+  it('el coordinador no puede crear sucursales ni usuarios', async () => {
+    const empresa = await crearEmpresa();
+    const token = await tokenDeRol(empresa.id, 'COORDINADOR');
+    const suc = await request(app).post('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`).send({ nombre: 'X' });
+    const usr = await request(app)
+      .post('/api/organizacion/usuarios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'X', email: emailUnico(), password: PASSWORD_PRUEBA, rol: 'USUARIO' });
+    expect(suc.status).toBe(403);
+    expect(usr.status).toBe(403);
+  });
+
+  it('el usuario normal puede leer sucursales pero no ver usuarios', async () => {
+    const empresa = await crearEmpresa();
+    const token = await tokenDeRol(empresa.id, 'USUARIO');
+    const suc = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`);
+    const usr = await request(app).get('/api/organizacion/usuarios').set('Authorization', `Bearer ${token}`);
+    expect(suc.status).toBe(200);
+    expect(usr.status).toBe(403);
+  });
+
+  it('el director puede crear usuarios con cualquier rol de empresa', async () => {
+    const empresa = await crearEmpresa();
+    const token = await tokenDeRol(empresa.id, 'DIRECTOR_EMPRESA');
+    for (const rol of ['DIRECTOR_EMPRESA', 'COORDINADOR', 'USUARIO']) {
+      const res = await request(app)
+        .post('/api/organizacion/usuarios')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nombre: rol, email: emailUnico(rol.toLowerCase()), password: PASSWORD_PRUEBA, rol });
+      expect(res.status).toBe(201);
+      expect(res.body.usuario.rol).toBe(rol);
+    }
+  });
+
+  it('el rol SUPERADMIN no se puede asignar desde una empresa', async () => {
+    const empresa = await crearEmpresa();
+    const token = await tokenDeRol(empresa.id, 'DIRECTOR_EMPRESA');
+    const res = await request(app)
+      .post('/api/organizacion/usuarios')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nombre: 'X', email: emailUnico(), password: PASSWORD_PRUEBA, rol: 'SUPERADMIN' });
+    expect(res.status).toBe(400);
+  });
+
+  it('un usuario nuevo sin rol indicado queda como USUARIO por defecto', async () => {
+    const empresa = await crearEmpresa();
+    const u = await prisma.usuario.create({
+      data: { tenantId: empresa.id, email: emailUnico('defecto'), nombre: 'Por defecto', passwordHash: 'x' },
+    });
+    expect(u.rol).toBe('USUARIO');
+  });
+});
