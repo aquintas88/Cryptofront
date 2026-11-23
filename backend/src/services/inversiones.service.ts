@@ -52,14 +52,16 @@ function serie(d: Datos, producto: Producto | null, desde: Date) {
     let capital = 0;
     for (const p of posiciones) {
       if (+p.fechaAlta > fin) continue;
-      capital += p.aportado;
+      // Solo lo aportado hasta este día: las aportaciones posteriores no cuentan aún.
+      const mov = d.movimientos.filter((m) => m.posicionId === p.id && +m.fecha <= fin);
+      const acum = (tipo: string) => mov.filter((m) => m.tipo === tipo).reduce((s, m) => s + num(m.importe), 0);
+      const aportadoHasta = acum('APORTACION') || num(p.capitalAportado);
+      capital += aportadoHasta;
       if (p.producto === 'BOT_TRADING') {
         const vs = d.valores.filter((v) => v.posicionId === p.id && +v.fecha <= fin).sort((a, b) => +b.fecha - +a.fecha);
-        valor += vs.length ? num(vs[0].valor) : p.aportado;
+        valor += vs.length ? num(vs[0].valor) : aportadoHasta;
       } else {
-        const mov = d.movimientos.filter((m) => m.posicionId === p.id && +m.fecha <= fin);
-        const acum = (tipo: string) => mov.filter((m) => m.tipo === tipo).reduce((s, m) => s + num(m.importe), 0);
-        valor += p.aportado + acum('RENDIMIENTO') + acum('REPARTO') - acum('RETIRADA');
+        valor += aportadoHasta + acum('RENDIMIENTO') + acum('REPARTO') - acum('RETIRADA');
       }
     }
     puntos.push({ fecha: dia.toISOString().slice(0, 10), valor: redondear(valor), capitalAportado: redondear(capital) });
