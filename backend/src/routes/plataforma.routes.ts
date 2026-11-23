@@ -1,3 +1,4 @@
+import { validarIdioma } from '../lib/idiomas';
 import { Router } from 'express';
 import { requiereRol, requiereSesion } from '../middleware/sesion';
 import { asincrona } from '../lib/asincrona';
@@ -27,7 +28,8 @@ router.post('/empresas', asincrona(async (req, res) => {
       password: passwordNueva(d.password),
     };
   }
-  const resultado = await plataforma.crearEmpresa(nombre, director);
+  const idioma = validarIdioma(req.body?.idioma);
+  const resultado = await plataforma.crearEmpresa(nombre, director, idioma);
   res.status(201).json(resultado);
 }));
 

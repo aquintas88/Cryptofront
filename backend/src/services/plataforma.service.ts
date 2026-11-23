@@ -1,3 +1,4 @@
+import type { IdiomaCliente } from '../lib/idiomas';
 // Gestión de empresas (tenants) desde la plataforma. Solo lo usan usuarios con rol SUPERADMIN.
 import { prisma } from '../lib/prisma';
 import { hashPassword } from '../lib/criptografia';
@@ -10,9 +11,9 @@ export interface DatosDirector {
 }
 
 // Crea la empresa y, si se indica, su primer director, en una sola transacción.
-export async function crearEmpresa(nombre: string, director?: DatosDirector) {
+export async function crearEmpresa(nombre: string, director?: DatosDirector, idioma: IdiomaCliente = 'es') {
   return prisma.$transaction(async (tx) => {
-    const empresa = await tx.tenant.create({ data: { nombre } });
+    const empresa = await tx.tenant.create({ data: { nombre, idioma } });
     let directorCreado: { id: string; email: string; nombre: string } | null = null;
     if (director) {
       const usuario = await tx.usuario.create({

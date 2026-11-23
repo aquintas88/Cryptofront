@@ -7,13 +7,14 @@ import Gestion from './pages/Gestion';
 import Plataforma from './pages/Plataforma';
 import Web from './web/Web';
 import Terminos from './web/Terminos';
+import { leerRuta, IDIOMA_DEFECTO } from './web/textos';
 
 // Vista según el rol de la sesión. El servidor es quien decide qué datos devuelve.
 export default function App() {
-  // Rutas públicas: / (web) y /terminos. El resto (/acceso) es la zona de clientes.
-  const ruta = typeof window !== 'undefined' ? window.location.pathname : '/';
-  if (ruta === '/') return <Web />;
-  if (ruta === '/terminos') return <Terminos />;
+  // Rutas públicas por idioma: /es, /en… (y / por defecto). El resto (/acceso) es la zona de clientes.
+  const { idioma, base } = leerRuta(typeof window !== 'undefined' ? window.location.pathname : '/');
+  if (base === '/') return <Web idioma={idioma ?? IDIOMA_DEFECTO} />;
+  if (base === '/terminos') return <Terminos idioma={idioma ?? IDIOMA_DEFECTO} />;
   const { usuario, refreshToken, guardar } = useSesion();
   const [restaurando, setRestaurando] = useState(Boolean(refreshToken && !usuario));
 

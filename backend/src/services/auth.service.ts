@@ -28,6 +28,7 @@ export interface UsuarioPublico {
   tenantId: string;
   rol: string;
   twoFactorActivo: boolean;
+  idioma: string;
 }
 
 export interface ResultadoSesion {
@@ -40,7 +41,8 @@ export type ResultadoLogin =
   | ({ requiere2fa: false } & ResultadoSesion)
   | { requiere2fa: true; preToken: string };
 
-function publico(u: Usuario): UsuarioPublico {
+async function publico(u: Usuario): Promise<UsuarioPublico> {
+  const empresa = await prisma.tenant.findUnique({ where: { id: u.tenantId }, select: { idioma: true } });
   return {
     id: u.id,
     email: u.email,
@@ -48,6 +50,7 @@ function publico(u: Usuario): UsuarioPublico {
     tenantId: u.tenantId,
     rol: u.rol,
     twoFactorActivo: u.twoFactorActivo,
+    idioma: empresa?.idioma ?? 'es',
   };
 }
 
@@ -117,7 +120,7 @@ async function crearSesion(u: Usuario): Promise<ResultadoSesion> {
     },
   });
   // El rol del token se confirma en cada petición contra la base de datos (ver middleware/sesion.ts).
-  return { accessToken: firmarAcceso(u, secreto), refreshToken, usuario: publico(u) };
+  return { accessToken: firmarAcceso(u, secreto), refreshToken, usuario: await publico(u) };
 }
 
 export async function login(email: string, password: string): Promise<ResultadoLogin> {
@@ -240,5 +243,5 @@ export async function cerrarSesion(refreshToken: string) {
 
 export async function obtenerUsuario(usuarioId: string): Promise<UsuarioPublico | null> {
   const u = await prisma.usuario.findUnique({ where: { id: usuarioId } });
-  return u && u.activo ? publico(u) : null;
+  return u && u.activo ? await publico(u) : null;
 }

@@ -24,6 +24,8 @@ enum Rol {
 model Tenant {
   id           String               @id @default(cuid())
   nombre       String
+  // Idioma de la zona de clientes (es | en). Se configura al dar de alta la empresa.
+  idioma       String               @default("es")
   activa       Boolean              @default(true)
   esPlataforma Boolean              @default(false)
   creadaEn     DateTime             @default(now())
