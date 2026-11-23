@@ -1,5 +1,14 @@
-export const eur = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+// Euros con separador de miles siempre (4.000,00 €), como el resto de cifras de la aplicación.
+export const eur = (n: number) => {
+  const [entero, decimales] = Math.abs(n).toFixed(2).split('.');
+  const conSeparador = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${n < 0 ? '-' : ''}${conSeparador},${decimales}\u00A0€`;
+};
+// Mes en formato «Noviembre de 2026» (mayúscula solo al inicio).
+export const mesLargo = (mes: string) => {
+  const t = new Date(mes + '-01T00:00:00Z').toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
 export const pct = (n: number) =>
   `${n > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} %`;
 export const fecha = (f: string | Date) =>

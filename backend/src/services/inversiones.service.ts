@@ -86,10 +86,9 @@ export async function resumenInversor(u: UsuarioContexto) {
   const aportado = pos.reduce((s, p) => s + p.aportado, 0);
   const retirado = pos.reduce((s, p) => s + p.retirado, 0);
   const ganancia = patrimonio + retirado - aportado;
-  const mesActual = inicioMes(new Date());
-  const enMes = (f: Date) => +f >= +mesActual;
-  const gananciaMes = d.movimientos.filter((m) => enMes(m.fecha) && ['RENDIMIENTO', 'REPARTO'].includes(m.tipo))
-    .reduce((s, m) => s + num(m.importe), 0);
+  // Misma fórmula que la tabla mensual: variación del valor menos aportes netos del mes.
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const gananciaMes = rentabilidadMeses(d).find((m) => m.mes === mesActual)?.gananciaEur ?? 0;
   const primera = d.posiciones[0];
   return {
     patrimonio: redondear(patrimonio),
@@ -174,11 +173,9 @@ export async function resumenGestion(u: UsuarioContexto) {
 
 // Rentabilidad mensual y acumulada (Dietz simplificado): la base es el valor del mes anterior más los
 // aportes netos del mes. El mes en curso se marca como parcial.
-export async function rentabilidadInversor(u: UsuarioContexto) {
-  const d = await cargar(u, u.id);
-  const carga = await ultimaCarga(u.tenantId);
+function rentabilidadMeses(d: Awaited<ReturnType<typeof cargar>>) {
   const primera = d.posiciones[0]?.fechaAlta;
-  if (!primera) return { meses: [], ...carga };
+  if (!primera) return [];
   const puntos = serie(d, null, new Date(Date.UTC(primera.getUTCFullYear(), primera.getUTCMonth(), primera.getUTCDate())));
   const finDeMes = new Map<string, number>();
   for (const p of puntos) finDeMes.set(p.fecha.slice(0, 7), p.valor);
@@ -188,11 +185,12 @@ export async function rentabilidadInversor(u: UsuarioContexto) {
   const actual = new Date().toISOString().slice(0, 7);
   let anterior = 0;
   let acumulado = 1;
-  const meses = [...finDeMes.keys()].sort().map((mes) => {
+  return [...finDeMes.keys()].sort().map((mes) => {
     const valor = finDeMes.get(mes) ?? anterior;
     const neto = netoDelMes(mes);
     const base = anterior + neto;
-    const r = base > 0 ? (valor - anterior - neto) / base : 0;
+    const ganancia = valor - anterior - neto;
+    const r = base > 0 ? ganancia / base : 0;
     acumulado *= 1 + r;
     anterior = valor;
     return {
@@ -201,8 +199,15 @@ export async function rentabilidadInversor(u: UsuarioContexto) {
       rentabilidadPct: redondear(r * 100),
       acumuladaPct: redondear((acumulado - 1) * 100),
       valorFin: redondear(valor),
+      gananciaEur: redondear(ganancia),
     };
   });
+}
+
+export async function rentabilidadInversor(u: UsuarioContexto) {
+  const d = await cargar(u, u.id);
+  const carga = await ultimaCarga(u.tenantId);
+  const meses = rentabilidadMeses(d).map(({ gananciaEur: _g, ...resto }) => resto);
   return { meses, ...carga };
 }
 

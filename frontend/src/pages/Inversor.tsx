@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useSesion } from '../lib/sesion';
 import Grafico from '../components/Grafico';
-import { eur, pct, fecha, NOMBRE_PRODUCTO, TIPO_MOVIMIENTO } from '../components/formato';
+import { eur, pct, fecha, mesLargo, NOMBRE_PRODUCTO, TIPO_MOVIMIENTO } from '../components/formato';
 
 const ESTRATEGIAS = [
   { id: null, nombre: 'Todo' },
@@ -118,7 +118,7 @@ export default function Inversor() {
               <tbody>
                 {renta.data?.meses.slice().reverse().map((m) => (
                   <tr key={m.mes} className="border-t border-slate-100">
-                    <td className="py-2 capitalize">{new Date(m.mes + '-01T00:00:00Z').toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+                    <td className="py-2">{mesLargo(m.mes)}
                       {m.parcial && <span className="ml-2 rounded bg-[#c9a24a]/20 px-2 py-0.5 text-xs text-[#8a6a22]">en curso</span>}</td>
                     <td className={`text-right font-medium ${m.rentabilidadPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{pct(m.rentabilidadPct)}</td>
                     <td className={`text-right ${m.acumuladaPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{pct(m.acumuladaPct)}</td>
