@@ -81,8 +81,9 @@ async function cargar(u: UsuarioContexto, inversorId: string | null) {
   });
 }
 
-export async function resumenInversor(u: UsuarioContexto) {
-  const d = await cargar(u, u.id);
+// inversorId: el propio inversor (por defecto) o, para la plataforma, un inversor concreto. null = acumulado de la empresa.
+export async function resumenInversor(u: UsuarioContexto, inversorId: string | null = u.id) {
+  const d = await cargar(u, inversorId);
   const pos = agregarPorPosicion(d);
   const patrimonio = pos.reduce((s, p) => s + p.valorActual, 0);
   const aportado = pos.reduce((s, p) => s + p.aportado, 0);
@@ -116,8 +117,8 @@ export async function resumenInversor(u: UsuarioContexto) {
   };
 }
 
-export async function serieInversor(u: UsuarioContexto, producto: Producto | null, periodo: '6m' | '1a' | 'todo') {
-  const d = await cargar(u, u.id);
+export async function serieInversor(u: UsuarioContexto, producto: Producto | null, periodo: '6m' | '1a' | 'todo', inversorId: string | null = u.id) {
+  const d = await cargar(u, inversorId);
   const primera = d.posiciones[0]?.fechaAlta ?? new Date();
   const desde = periodo === 'todo'
     ? new Date(primera)
@@ -125,9 +126,9 @@ export async function serieInversor(u: UsuarioContexto, producto: Producto | nul
   return serie(d, producto, new Date(Math.max(+desde, +primera)));
 }
 
-export async function movimientosInversor(u: UsuarioContexto, limite: number) {
+export async function movimientosInversor(u: UsuarioContexto, limite: number, inversorId: string | null = u.id) {
   return conContextoRls(u, (tx) => tx.movimientoInversion.findMany({
-    where: { inversorId: u.id },
+    where: inversorId ? { inversorId } : {},
     orderBy: { fecha: 'desc' },
     take: limite,
     select: { id: true, tipo: true, importe: true, fecha: true, posicion: { select: { producto: true } } },
@@ -180,8 +181,8 @@ export function rentabilidadAnualizada(meses: { factor: number }[], fechaAlta: D
   return redondear((Math.pow(ultimo.factor, 365 / dias) - 1) * 100);
 }
 
-export async function rentabilidadInversor(u: UsuarioContexto) {
-  const d = await cargar(u, u.id);
+export async function rentabilidadInversor(u: UsuarioContexto, inversorId: string | null = u.id) {
+  const d = await cargar(u, inversorId);
   const carga = await ultimaCarga(u.tenantId);
   const raw = rentabilidadMeses(d);
   const meses = raw.map(({ gananciaEur: _g, factor: _f, ...resto }) => resto);

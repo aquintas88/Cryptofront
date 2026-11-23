@@ -5,8 +5,10 @@ import { Modal } from '../components/ui/Modal';
 import Cargas from './plataforma/Cargas';
 import Usuarios from './plataforma/Usuarios';
 import Auditoria from './plataforma/Auditoria';
+import PanelPlataforma from './plataforma/PanelPlataforma';
 
 const PESTANAS = [
+  { id: 'panel', nombre: 'Panel de inversiones', componente: PanelPlataforma },
   { id: 'cargas', nombre: 'Cargas de datos', componente: Cargas },
   { id: 'usuarios', nombre: 'Usuarios', componente: Usuarios },
   { id: 'auditoria', nombre: 'Auditoría', componente: Auditoria },
@@ -15,7 +17,7 @@ const PESTANAS = [
 // Zona de superadmin (en español). Tres pestañas: cargas, cuentas y auditoría.
 export default function Plataforma() {
   const usuario = useSesion((s) => s.usuario);
-  const [activa, setActiva] = useState<(typeof PESTANAS)[number]['id']>('cargas');
+  const [activa, setActiva] = useState<(typeof PESTANAS)[number]['id']>('panel');
   const [miCuenta, setMiCuenta] = useState(false);
   const Vista = PESTANAS.find((p) => p.id === activa)!.componente;
 

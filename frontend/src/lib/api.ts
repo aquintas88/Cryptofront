@@ -103,6 +103,20 @@ export const api = {
   },
 };
 
+// Panel de inversiones de la plataforma: mismas consultas que el inversor, por empresa y, opcionalmente, por inversor.
+export const panelPlataforma = (empresa: string, inversor: string | null) => {
+  const qs = `empresa=${encodeURIComponent(empresa)}${inversor ? `&inversor=${encodeURIComponent(inversor)}` : ''}`;
+  return {
+    resumen: () => peticion<ResumenInversor>(`/api/plataforma/panel/resumen?${qs}`),
+    serie: (producto: string | null, periodo: string) =>
+      peticion<{ datos: PuntoSerie[] }>(`/api/plataforma/panel/serie?${qs}&periodo=${periodo}${producto ? `&producto=${producto}` : ''}`),
+    movimientos: () => peticion<{ datos: Movimiento[] }>(`/api/plataforma/panel/movimientos?${qs}&limite=20`),
+    rentabilidad: () => peticion<Rentabilidad>(`/api/plataforma/panel/rentabilidad?${qs}`),
+  };
+};
+export const panelInversores = (empresa: string) =>
+  peticion<{ inversores: { id: string; nombre: string; email: string; activo: boolean }[] }>(`/api/plataforma/panel/inversores?empresa=${encodeURIComponent(empresa)}`);
+
 export interface CuentaPlataforma {
   id: string; email: string; nombre: string; rol: string; activo: boolean; twoFactorActivo: boolean;
   intentosFallidos: number; bloqueadoHasta: string | null; debeCambiarPassword: boolean;
