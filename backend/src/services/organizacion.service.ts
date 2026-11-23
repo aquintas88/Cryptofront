@@ -8,7 +8,7 @@ import { diferencias, registrarAuditoria, sanear } from '../lib/auditoria';
 import { esDuplicado } from './plataforma.service';
 import { ParamsListado, ordenPrisma, paginacion, respuestaListado } from '../lib/listados';
 
-const ROLES_DE_EMPRESA = ['DIRECTOR_EMPRESA', 'COORDINADOR', 'USUARIO'] as const;
+const ROLES_DE_EMPRESA = ['USUARIO'] as const;
 
 // Campos devueltos al cliente. Nunca hash, ni secretos 2FA, ni tokens.
 const SELECCION_USUARIO = {
@@ -178,8 +178,8 @@ export async function actualizarUsuario(
 
   // Nadie se desactiva ni se degrada a sí mismo: evita quedarse sin administración.
   if (id === actorId) {
-    if (cambios.activo === false || (cambios.rol !== undefined && cambios.rol !== 'DIRECTOR_EMPRESA')) {
-      throw new ErrorApp(409, 'No puedes desactivarte ni quitarte el rol de director');
+    if (cambios.activo === false || cambios.rol !== undefined) {
+      throw new ErrorApp(409, 'No puedes desactivarte ni cambiarte el rol');
     }
   }
   if (cambios.rol !== undefined && !ROLES_DE_EMPRESA.includes(cambios.rol as (typeof ROLES_DE_EMPRESA)[number])) {

@@ -4,7 +4,7 @@ import { asincrona } from '../lib/asincrona';
 import { ErrorApp } from '../lib/errores';
 import * as inv from '../services/inversiones.service';
 
-// Zona de inversores (INVERSOR) y panel de gestión (DIRECTOR_EMPRESA). Aislamiento: RLS en Postgres.
+// Zona de inversores (INVERSOR). Aislamiento: RLS en Postgres.
 const router = Router();
 router.use(requiereSesion);
 
@@ -34,10 +34,6 @@ router.get('/movimientos', requiereRol('INVERSOR'), asincrona(async (req, res) =
 
 router.get('/rentabilidad', requiereRol('INVERSOR'), asincrona(async (_req, res) => {
   res.json(await inv.rentabilidadInversor(res.locals.usuario));
-}));
-
-router.get('/gestion/resumen', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (_req, res) => {
-  res.json(await inv.resumenGestion(res.locals.usuario));
 }));
 
 export default router;

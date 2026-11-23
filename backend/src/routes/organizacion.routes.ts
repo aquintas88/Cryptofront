@@ -10,7 +10,7 @@ import * as secretos from '../services/secretos.service';
 import * as plantillas from '../services/plantillas.service';
 
 // Gestión de la propia empresa. Todas las rutas filtran por el tenant del usuario autenticado.
-// DIRECTOR_EMPRESA escribe; COORDINADOR lee sucursales, usuarios y plantillas; USUARIO lee sucursales.
+// Módulo de organización: solo SUPERADMIN (los roles de empresa se han eliminado).
 const router = Router();
 router.use(requiereSesion);
 
@@ -35,7 +35,7 @@ router.get('/sucursales/:id', asincrona(async (req, res) => {
   res.json({ sucursal: await org.obtenerSucursal(res.locals.usuario.tenantId, idValido(req.params.id, 'id')) });
 }));
 
-router.post('/sucursales', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.post('/sucursales', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const sucursal = await org.crearSucursal(res.locals.usuario.tenantId, res.locals.usuario.id, {
     nombre: texto(req.body?.nombre, 'nombre', { max: 120 }),
     direccion: textoOpcional(req.body?.direccion, 'direccion', 300),
@@ -43,7 +43,7 @@ router.post('/sucursales', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req
   res.status(201).json({ sucursal });
 }));
 
-router.patch('/sucursales/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.patch('/sucursales/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const cambios: { nombre?: string; direccion?: string | null; activa?: boolean } = {};
   if (req.body?.nombre !== undefined) cambios.nombre = texto(req.body.nombre, 'nombre', { max: 120 });
   if (req.body?.direccion !== undefined) cambios.direccion = textoOpcional(req.body.direccion, 'direccion', 300);
@@ -59,16 +59,16 @@ router.patch('/sucursales/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async
 }));
 
 // Usuarios
-router.get('/usuarios', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.get('/usuarios', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const params = leerParamsListado(req.query, org.ORDEN_USUARIOS, 'nombre');
   res.json(await org.listarUsuarios(res.locals.usuario.tenantId, params));
 }));
 
-router.get('/usuarios/:id', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.get('/usuarios/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   res.json({ usuario: await org.obtenerUsuario(res.locals.usuario.tenantId, idValido(req.params.id, 'id')) });
 }));
 
-router.post('/usuarios', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.post('/usuarios', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const usuario = await org.crearUsuario(res.locals.usuario.tenantId, res.locals.usuario.id, {
     nombre: texto(req.body?.nombre, 'nombre', { max: 120 }),
     email: email(req.body?.email),
@@ -79,7 +79,7 @@ router.post('/usuarios', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, 
   res.status(201).json({ usuario });
 }));
 
-router.patch('/usuarios/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.patch('/usuarios/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const cambios: { nombre?: string; rol?: string; activo?: boolean; sucursalId?: string | null } = {};
   if (req.body?.nombre !== undefined) cambios.nombre = texto(req.body.nombre, 'nombre', { max: 120 });
   if (req.body?.rol !== undefined) cambios.rol = texto(req.body.rol, 'rol', { max: 20 });
@@ -98,16 +98,16 @@ router.patch('/usuarios/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (
 }));
 
 // Plantillas de documento
-router.get('/plantillas', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.get('/plantillas', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const params = leerParamsListado(req.query, plantillas.ORDEN_PLANTILLAS, 'nombre');
   res.json(await plantillas.listarPlantillas(res.locals.usuario.tenantId, params));
 }));
 
-router.get('/plantillas/:id', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.get('/plantillas/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   res.json({ plantilla: await plantillas.obtenerPlantilla(res.locals.usuario.tenantId, idValido(req.params.id, 'id')) });
 }));
 
-router.post('/plantillas', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.post('/plantillas', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const plantilla = await plantillas.crearPlantilla(res.locals.usuario.tenantId, res.locals.usuario.id, {
     nombre: texto(req.body?.nombre, 'nombre', { max: 120 }),
     contenido: plantillas.validarContenido(req.body?.contenido),
@@ -115,7 +115,7 @@ router.post('/plantillas', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req
   res.status(201).json({ plantilla });
 }));
 
-router.patch('/plantillas/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.patch('/plantillas/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const cambios: { nombre?: string; contenido?: string } = {};
   if (req.body?.nombre !== undefined) cambios.nombre = texto(req.body.nombre, 'nombre', { max: 120 });
   if (req.body?.contenido !== undefined) cambios.contenido = plantillas.validarContenido(req.body.contenido);
@@ -129,7 +129,7 @@ router.patch('/plantillas/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async
   res.json({ plantilla });
 }));
 
-router.post('/plantillas/:id/pdf', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.post('/plantillas/:id/pdf', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const pdf = await plantillas.generarPdf(res.locals.usuario.tenantId, idValido(req.params.id, 'id'), req.body?.variables);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
@@ -137,12 +137,12 @@ router.post('/plantillas/:id/pdf', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'
 }));
 
 // Secretos de integración: solo el director. Nunca se devuelve el valor.
-router.get('/secretos', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.get('/secretos', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const params = leerParamsListado(req.query, secretos.ORDEN_SECRETOS, 'integracion');
   res.json(await secretos.listarSecretos(res.locals.usuario.tenantId, params));
 }));
 
-router.put('/secretos', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.put('/secretos', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const guardado = await secretos.guardarSecreto(res.locals.usuario.tenantId, res.locals.usuario.id, {
     integracion: nombreValido(req.body?.integracion, 'integracion'),
     campo: nombreValido(req.body?.campo, 'campo'),
@@ -152,7 +152,7 @@ router.put('/secretos', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, r
   res.json({ secreto: guardado });
 }));
 
-router.delete('/secretos', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.delete('/secretos', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const resultado = await secretos.eliminarSecreto(res.locals.usuario.tenantId, res.locals.usuario.id, {
     integracion: nombreValido(req.body?.integracion, 'integracion'),
     campo: nombreValido(req.body?.campo, 'campo'),
@@ -162,7 +162,7 @@ router.delete('/secretos', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req
 }));
 
 // Auditoría de la empresa: solo el director, más reciente primero.
-router.get('/auditoria', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.get('/auditoria', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const params = leerParamsListado(req.query, ORDEN_AUDITORIA, 'creadoEn', 'desc');
   res.json(await listarAuditoria(res.locals.usuario.tenantId, params));
 }));

@@ -11,8 +11,8 @@ const app = crearApp({ limiteAuth: 1000 });
 async function escenario() {
   const empresaA = await crearEmpresa('Empresa A');
   const empresaB = await crearEmpresa('Empresa B');
-  const dirA = await crearUsuario({ tenantId: empresaA.id, rol: 'DIRECTOR_EMPRESA' });
-  const dirB = await crearUsuario({ tenantId: empresaB.id, rol: 'DIRECTOR_EMPRESA' });
+  const dirA = await crearUsuario({ tenantId: empresaA.id, rol: 'SUPERADMIN' });
+  const dirB = await crearUsuario({ tenantId: empresaB.id, rol: 'SUPERADMIN' });
   const usrB = await crearUsuario({ tenantId: empresaB.id, rol: 'USUARIO' });
   const sucursalB = await prisma.sucursal.create({ data: { tenantId: empresaB.id, nombre: 'Sede B' } });
   return {
@@ -106,7 +106,9 @@ describe('aislamiento entre empresas', () => {
 
   it('un token de empresa no abre rutas de plataforma', async () => {
     const e = await escenario();
-    const res = await request(app).get('/api/plataforma/empresas').set('Authorization', `Bearer ${e.tokenA}`);
+    const usuarioA = await crearUsuario({ tenantId: e.empresaA.id, rol: 'USUARIO' });
+    const tokenUsuarioA = await tokenDe(app, usuarioA.usuario.email);
+    const res = await request(app).get('/api/plataforma/empresas').set('Authorization', `Bearer ${tokenUsuarioA}`);
     expect(res.status).toBe(403);
   });
 });

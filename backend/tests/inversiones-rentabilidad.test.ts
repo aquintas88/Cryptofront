@@ -17,9 +17,9 @@ describe('rentabilidad mensual y cargas', () => {
 
   it('calcula la rentabilidad mensual y acumulada con un caso comprobable a mano', async () => {
     const empresa = await crearEmpresa('Rentabilidad');
-    const gestor = (await crearUsuario({ tenantId: empresa.id, rol: 'DIRECTOR_EMPRESA' })).usuario;
+    const gestor = (await crearUsuario({ tenantId: empresa.id, rol: 'SUPERADMIN' })).usuario;
     const inv = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
-    const ctx = { id: gestor.id, tenantId: empresa.id, rol: 'DIRECTOR_EMPRESA' };
+    const ctx = { id: gestor.id, tenantId: empresa.id, rol: 'SUPERADMIN' };
     await conContextoRls(ctx, async (tx) => {
       const p = await tx.posicionInversion.create({
         data: { tenantId: empresa.id, inversorId: inv.id, producto: 'BOT_TRADING', fechaAlta: new Date('2026-01-10'), capitalAportado: 1000 },
@@ -61,7 +61,7 @@ describe('rentabilidad mensual y cargas', () => {
     const plat = await crearPlataforma();
     const tokenSA = await tokenDe(app, plat.usuario.email);
     const empresa = await crearEmpresa('Cargas tabla');
-    const dir = (await crearUsuario({ tenantId: empresa.id, rol: 'DIRECTOR_EMPRESA' })).usuario;
+    const dir = (await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' })).usuario;
     await prisma.cargaInversion.create({
       data: { tenantId: empresa.id, fechaCarga: new Date('2026-11-16T00:30:00Z'), origen: 'prueba', estado: 'OK', filasRecibidas: 5, filasAceptadas: 5 },
     });

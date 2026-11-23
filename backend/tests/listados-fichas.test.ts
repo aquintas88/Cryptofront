@@ -8,7 +8,7 @@ import { crearEmpresa, crearUsuario, limpiarBD, tokenDe } from './helpers';
 const app = crearApp({ limiteAuth: 1000 });
 
 async function directorDe(tenantId: string) {
-  const { usuario } = await crearUsuario({ tenantId, rol: 'DIRECTOR_EMPRESA' });
+  const { usuario } = await crearUsuario({ tenantId, rol: 'SUPERADMIN' });
   return tokenDe(app, usuario.email);
 }
 

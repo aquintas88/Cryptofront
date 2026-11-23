@@ -14,8 +14,6 @@ datasource db {
 // Roles de la plataforma.
 enum Rol {
   SUPERADMIN
-  DIRECTOR_EMPRESA
-  COORDINADOR
   USUARIO
   INVERSOR
 }

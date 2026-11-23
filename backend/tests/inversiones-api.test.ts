@@ -11,11 +11,11 @@ const app = crearApp({ limiteAuth: 1000 });
 async function escenario() {
   const empresa = await crearEmpresa('Cryptofront prueba API');
   const otra = await crearEmpresa('Otra empresa');
-  const gestor = (await crearUsuario({ tenantId: empresa.id, rol: 'DIRECTOR_EMPRESA' })).usuario;
+  const gestor = (await crearUsuario({ tenantId: empresa.id, rol: 'SUPERADMIN' })).usuario;
   const inv1 = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
   const inv2 = (await crearUsuario({ tenantId: empresa.id, rol: 'INVERSOR' })).usuario;
   const usuario = (await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' })).usuario;
-  const ctx = { id: gestor.id, tenantId: empresa.id, rol: 'DIRECTOR_EMPRESA' };
+  const ctx = { id: gestor.id, tenantId: empresa.id, rol: 'SUPERADMIN' };
   const ids = await conContextoRls(ctx, async (tx) => {
     const crear = async (inversorId: string, capital: number, producto: 'BOT_TRADING' | 'TOKEN_SHARE') => {
       const p = await tx.posicionInversion.create({
@@ -31,7 +31,7 @@ async function escenario() {
     };
     return { p1: await crear(inv1.id, 10000, 'BOT_TRADING'), p2: await crear(inv2.id, 5000, 'BOT_TRADING') };
   });
-  const otroGestor = (await crearUsuario({ tenantId: otra.id, rol: 'DIRECTOR_EMPRESA' })).usuario;
+  const otroGestor = (await crearUsuario({ tenantId: otra.id, rol: 'SUPERADMIN' })).usuario;
   return {
     ids,
     tokenInv1: await tokenDe(app, inv1.email),
@@ -85,30 +85,9 @@ describe('API de inversiones', () => {
     expect((await request(app).get('/api/inversiones/serie?periodo=5a').set(con(e.tokenInv1))).status).toBe(400);
   });
 
-  it('el gestor ve el panel de toda su empresa', async () => {
-    const e = await escenario();
-    const res = await request(app).get('/api/inversiones/gestion/resumen').set(con(e.tokenGestor));
-    expect(res.status).toBe(200);
-    expect(res.body.inversores).toBe(2);
-    expect(res.body.aportado).toBe(15000);
-  });
-
-  it('el gestor de otra empresa no ve nada de esta', async () => {
-    const e = await escenario();
-    const res = await request(app).get('/api/inversiones/gestion/resumen').set(con(e.tokenOtroGestor));
-    expect(res.body.inversores).toBe(0);
-    expect(res.body.aportado).toBe(0);
-  });
-
-  it('un inversor no accede al panel de gestión', async () => {
-    const e = await escenario();
-    expect((await request(app).get('/api/inversiones/gestion/resumen').set(con(e.tokenInv1))).status).toBe(403);
-  });
-
   it('un usuario sin rol de inversión no accede a la zona de inversores', async () => {
     const e = await escenario();
     expect((await request(app).get('/api/inversiones/resumen').set(con(e.tokenUsuario))).status).toBe(403);
-    expect((await request(app).get('/api/inversiones/gestion/resumen').set(con(e.tokenUsuario))).status).toBe(403);
   });
 
   it('sin token no hay acceso', async () => {

@@ -11,9 +11,9 @@ export interface UsuarioContexto {
   rol: string;
 }
 
-// Decisión provisional (ver docs/estado-sesion.md): solo DIRECTOR_EMPRESA ve la gestión completa.
+// Acceso de gestión total a las tablas de inversiones: solo SUPERADMIN (los roles de empresa se han eliminado).
 export function accesoTotal(rol: string): boolean {
-  return rol === 'DIRECTOR_EMPRESA';
+  return rol === 'SUPERADMIN';
 }
 
 export async function conContextoRls<T>(

@@ -28,7 +28,7 @@ router.get('/:id', asincrona(async (req, res) => {
   res.json({ ticket: await tickets.obtenerTicket(res.locals.usuario as Usuario, idValido(req.params.id, 'id')) });
 }));
 
-router.patch('/:id', requiereRol('DIRECTOR_EMPRESA'), asincrona(async (req, res) => {
+router.patch('/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const cambios: { estado?: 'ABIERTO' | 'EN_CURSO' | 'RESUELTO' | 'CERRADO'; criticidad?: 'BAJA' | 'MEDIA' | 'ALTA'; asignadoAId?: string | null } = {};
   if (req.body?.estado !== undefined) cambios.estado = tickets.validarEstado(req.body.estado);
   if (req.body?.criticidad !== undefined) cambios.criticidad = tickets.validarCriticidad(req.body.criticidad);

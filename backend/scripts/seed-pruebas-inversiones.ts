@@ -53,7 +53,7 @@ async function main() {
   const tenant = await prisma.tenant.create({ data: { nombre: NOMBRE_EMPRESA } });
   const hash = hashPassword(password);
   const gestor = await prisma.usuario.create({
-    data: { tenantId: tenant.id, email: 'gestor@ejemplo.test', nombre: 'Gestor de pruebas', rol: 'DIRECTOR_EMPRESA', passwordHash: hash },
+    data: { tenantId: tenant.id, email: 'gestor@ejemplo.test', nombre: 'Gestor de pruebas', rol: 'SUPERADMIN', passwordHash: hash },
   });
   const inversores = [];
   for (let i = 1; i <= 10; i++) {
@@ -63,7 +63,7 @@ async function main() {
     }));
   }
 
-  const ctx = { id: gestor.id, tenantId: tenant.id, rol: 'DIRECTOR_EMPRESA' };
+  const ctx = { id: gestor.id, tenantId: tenant.id, rol: 'SUPERADMIN' };
   await conContextoRls(ctx, async (tx) => {
     // Condiciones vigentes: comisión de éxito del bot (general) y condiciones de cada producto.
     await tx.condicionesInversion.create({

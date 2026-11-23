@@ -11,7 +11,7 @@ const app = crearApp({ limiteAuth: 1000 });
 const VALOR_SECRETO = 'valor-secreto-ficticio-9f8e7d6c';
 
 async function directorDe(tenantId: string) {
-  const { usuario } = await crearUsuario({ tenantId, rol: 'DIRECTOR_EMPRESA' });
+  const { usuario } = await crearUsuario({ tenantId, rol: 'SUPERADMIN' });
   return tokenDe(app, usuario.email);
 }
 
@@ -92,7 +92,7 @@ describe('secretos de integración', () => {
 
   it('el coordinador no puede ver ni escribir secretos', async () => {
     const empresa = await crearEmpresa();
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'COORDINADOR' });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
     const token = await tokenDe(app, usuario.email);
     const lista = await request(app).get('/api/organizacion/secretos').set('Authorization', `Bearer ${token}`);
     const escribe = await request(app).put('/api/organizacion/secretos').set('Authorization', `Bearer ${token}`)

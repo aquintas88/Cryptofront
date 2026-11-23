@@ -29,7 +29,7 @@ describe('plataforma: alta de empresas', () => {
     expect(JSON.stringify(res.body)).not.toContain('passwordHash');
 
     const dir = await prisma.usuario.findUniqueOrThrow({ where: { email } });
-    expect(dir.rol).toBe('DIRECTOR_EMPRESA');
+    expect(dir.rol).toBe('USUARIO');
     expect(dir.tenantId).toBe(res.body.empresa.id);
   });
 
@@ -63,7 +63,7 @@ describe('plataforma: alta de empresas', () => {
 
   it('un director de empresa no puede dar de alta empresas', async () => {
     await crearPlataforma();
-    const empresaDir = await crearUsuario({ rol: 'DIRECTOR_EMPRESA' });
+    const empresaDir = await crearUsuario({ rol: 'USUARIO' });
     const token = await tokenDe(app, empresaDir.usuario.email);
     const res = await request(app)
       .post('/api/plataforma/empresas')

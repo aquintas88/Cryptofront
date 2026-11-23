@@ -8,7 +8,7 @@ import { PASSWORD_PRUEBA, crearEmpresa, crearUsuario, emailUnico, limpiarBD, tok
 const app = crearApp({ limiteAuth: 1000 });
 
 async function directorDe(tenantId: string) {
-  const { usuario } = await crearUsuario({ tenantId, rol: 'DIRECTOR_EMPRESA' });
+  const { usuario } = await crearUsuario({ tenantId, rol: 'SUPERADMIN' });
   return { usuario, token: await tokenDe(app, usuario.email) };
 }
 
@@ -100,7 +100,7 @@ describe('auditoría', () => {
     expect(ok.status).toBe(200);
     expect(ok.body.datos.length).toBeGreaterThan(0);
 
-    const { usuario: coord } = await crearUsuario({ tenantId: empresa.id, rol: 'COORDINADOR' });
+    const { usuario: coord } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
     const tokenCoord = await tokenDe(app, coord.email);
     const denegado = await request(app).get('/api/organizacion/auditoria').set('Authorization', `Bearer ${tokenCoord}`);
     expect(denegado.status).toBe(403);

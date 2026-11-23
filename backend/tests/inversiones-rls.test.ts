@@ -11,15 +11,15 @@ import { crearEmpresa, crearUsuario, limpiarBD } from './helpers';
 async function escenario() {
   const empresaA = await crearEmpresa('Cryptofront A');
   const empresaB = await crearEmpresa('Empresa B');
-  const dirA = (await crearUsuario({ tenantId: empresaA.id, rol: 'DIRECTOR_EMPRESA' })).usuario;
-  const dirB = (await crearUsuario({ tenantId: empresaB.id, rol: 'DIRECTOR_EMPRESA' })).usuario;
+  const dirA = (await crearUsuario({ tenantId: empresaA.id, rol: 'SUPERADMIN' })).usuario;
+  const dirB = (await crearUsuario({ tenantId: empresaB.id, rol: 'SUPERADMIN' })).usuario;
   const inv1 = (await crearUsuario({ tenantId: empresaA.id, rol: 'INVERSOR' })).usuario;
   const inv2 = (await crearUsuario({ tenantId: empresaA.id, rol: 'INVERSOR' })).usuario;
   const inv3 = (await crearUsuario({ tenantId: empresaB.id, rol: 'INVERSOR' })).usuario;
   const usuarioSinRol = (await crearUsuario({ tenantId: empresaA.id, rol: 'USUARIO' })).usuario;
 
-  const ctxDirA: UsuarioContexto = { id: dirA.id, tenantId: empresaA.id, rol: 'DIRECTOR_EMPRESA' };
-  const ctxDirB: UsuarioContexto = { id: dirB.id, tenantId: empresaB.id, rol: 'DIRECTOR_EMPRESA' };
+  const ctxDirA: UsuarioContexto = { id: dirA.id, tenantId: empresaA.id, rol: 'SUPERADMIN' };
+  const ctxDirB: UsuarioContexto = { id: dirB.id, tenantId: empresaB.id, rol: 'SUPERADMIN' };
 
   const { pos1, pos2 } = await conContextoRls(ctxDirA, async (tx) => {
     const condiciones = await tx.condicionesInversion.create({

@@ -9,7 +9,7 @@ const app = crearApp({ limiteAuth: 1000 });
 const CONTENIDO = 'Estimado {{cliente}}, su cita en {{sucursal}} es el {{fecha}}.';
 
 async function directorDe(tenantId: string) {
-  const { usuario } = await crearUsuario({ tenantId, rol: 'DIRECTOR_EMPRESA' });
+  const { usuario } = await crearUsuario({ tenantId, rol: 'SUPERADMIN' });
   return tokenDe(app, usuario.email);
 }
 
@@ -99,19 +99,22 @@ describe('plantillas PDF', () => {
     expect(anidada.status).toBe(400);
   });
 
-  it('el coordinador puede generar PDF pero no crear plantillas', async () => {
+  it('un usuario no crea plantillas ni genera PDF; el superadmin sí', async () => {
     const empresa = await crearEmpresa();
     const token = await directorDe(empresa.id);
     const alta = await request(app).post('/api/organizacion/plantillas').set('Authorization', `Bearer ${token}`)
       .send({ nombre: 'Compartida', contenido: CONTENIDO });
-    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'COORDINADOR' });
+    const { usuario } = await crearUsuario({ tenantId: empresa.id, rol: 'USUARIO' });
     const tokenCoord = await tokenDe(app, usuario.email);
     const crea = await request(app).post('/api/organizacion/plantillas').set('Authorization', `Bearer ${tokenCoord}`)
       .send({ nombre: 'Nueva', contenido: CONTENIDO });
-    const pdf = await request(app).post(`/api/organizacion/plantillas/${alta.body.plantilla.id}/pdf`)
+    const pdfUsuario = await request(app).post(`/api/organizacion/plantillas/${alta.body.plantilla.id}/pdf`)
       .set('Authorization', `Bearer ${tokenCoord}`).send({});
+    const pdfSuperadmin = await request(app).post(`/api/organizacion/plantillas/${alta.body.plantilla.id}/pdf`)
+      .set('Authorization', `Bearer ${token}`).send({});
     expect(crea.status).toBe(403);
-    expect(pdf.status).toBe(200);
+    expect(pdfUsuario.status).toBe(403);
+    expect(pdfSuperadmin.status).toBe(200);
   });
 
   it('una plantilla de otra empresa responde 404', async () => {

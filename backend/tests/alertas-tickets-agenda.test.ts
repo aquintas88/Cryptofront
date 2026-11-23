@@ -7,7 +7,7 @@ import { crearEmpresa, crearUsuario, limpiarBD, tokenDe } from './helpers';
 
 const app = crearApp({ limiteAuth: 1000 });
 
-async function sesion(rol: 'DIRECTOR_EMPRESA' | 'COORDINADOR' | 'USUARIO', tenantId: string) {
+async function sesion(rol: 'SUPERADMIN' | 'USUARIO', tenantId: string) {
   const { usuario } = await crearUsuario({ tenantId, rol });
   return { usuario, token: await tokenDe(app, usuario.email) };
 }
@@ -23,7 +23,7 @@ describe('alertas', () => {
     const empresa = await crearEmpresa();
     const yo = await sesion('USUARIO', empresa.id);
     const otro = await sesion('USUARIO', empresa.id);
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     await crearAlerta(empresa.id, { tipo: 'PARA_MI', mensaje: 'x', destinatarioId: yo.usuario.id });
     await crearAlerta(empresa.id, { tipo: 'PARA_OTRO', mensaje: 'x', destinatarioId: otro.usuario.id });
     await crearAlerta(empresa.id, { tipo: 'EMPRESA', mensaje: 'x', destinatarioId: null });
@@ -82,7 +82,7 @@ describe('tickets', () => {
     const empresa = await crearEmpresa();
     const a = await sesion('USUARIO', empresa.id);
     const b = await sesion('USUARIO', empresa.id);
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     for (const s of [a, b]) {
       await request(app).post('/api/tickets').set('Authorization', `Bearer ${s.token}`).send({ asunto: 'T', descripcion: 'D' });
     }
@@ -104,7 +104,7 @@ describe('tickets', () => {
   it('solo el director cambia estado y cada cambio queda en el historial', async () => {
     const empresa = await crearEmpresa();
     const a = await sesion('USUARIO', empresa.id);
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     const t = await request(app).post('/api/tickets').set('Authorization', `Bearer ${a.token}`).send({ asunto: 'T', descripcion: 'D' });
     const denegado = await request(app).patch(`/api/tickets/${t.body.ticket.id}`).set('Authorization', `Bearer ${a.token}`).send({ estado: 'CERRADO' });
     expect(denegado.status).toBe(403);
@@ -134,7 +134,7 @@ describe('agenda', () => {
 
   it('rechaza fechas sin zona horaria', async () => {
     const empresa = await crearEmpresa();
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     const res = await request(app).post('/api/agenda').set('Authorization', `Bearer ${dir.token}`)
       .send({ ...evento, inicio: '2026-12-01T10:00:00' });
     expect(res.status).toBe(400);
@@ -142,7 +142,7 @@ describe('agenda', () => {
 
   it('rechaza un evento que termina antes de empezar', async () => {
     const empresa = await crearEmpresa();
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     const res = await request(app).post('/api/agenda').set('Authorization', `Bearer ${dir.token}`)
       .send({ ...evento, fin: '2026-12-01T09:00:00+01:00' });
     expect(res.status).toBe(400);
@@ -150,7 +150,7 @@ describe('agenda', () => {
 
   it('guarda en UTC y consulta por intervalo con zona horaria', async () => {
     const empresa = await crearEmpresa();
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     await request(app).post('/api/agenda').set('Authorization', `Bearer ${dir.token}`).send(evento);
     const fila = await prisma.evento.findFirstOrThrow({ where: { tenantId: empresa.id } });
     expect(fila.inicio.toISOString()).toBe('2026-12-01T09:00:00.000Z');
@@ -166,16 +166,16 @@ describe('agenda', () => {
 
   it('la consulta sin zona horaria responde 400', async () => {
     const empresa = await crearEmpresa();
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     const res = await request(app).get('/api/agenda?desde=2026-12-01&hasta=2026-12-02').set('Authorization', `Bearer ${dir.token}`);
     expect(res.status).toBe(400);
   });
 
-  it('el usuario normal no crea eventos; el coordinador sí, y solo edita los suyos', async () => {
+  it('solo el superadmin gestiona la agenda; un usuario no crea ni edita eventos', async () => {
     const empresa = await crearEmpresa();
     const normal = await sesion('USUARIO', empresa.id);
-    const coord = await sesion('COORDINADOR', empresa.id);
-    const otroCoord = await sesion('COORDINADOR', empresa.id);
+    const coord = await sesion('SUPERADMIN', empresa.id);
+    const otroCoord = await sesion('USUARIO', empresa.id);
     expect((await request(app).post('/api/agenda').set('Authorization', `Bearer ${normal.token}`).send(evento)).status).toBe(403);
     const creado = await request(app).post('/api/agenda').set('Authorization', `Bearer ${coord.token}`).send(evento);
     expect(creado.status).toBe(201);
@@ -185,7 +185,7 @@ describe('agenda', () => {
 
   it('borrar un evento queda auditado', async () => {
     const empresa = await crearEmpresa();
-    const dir = await sesion('DIRECTOR_EMPRESA', empresa.id);
+    const dir = await sesion('SUPERADMIN', empresa.id);
     const creado = await request(app).post('/api/agenda').set('Authorization', `Bearer ${dir.token}`).send(evento);
     await request(app).delete(`/api/agenda/${creado.body.evento.id}`).set('Authorization', `Bearer ${dir.token}`);
     expect(await prisma.registroAuditoria.count({ where: { tenantId: empresa.id, entidad: 'Evento', accion: 'BORRAR' } })).toBe(1);

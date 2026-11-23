@@ -10,7 +10,7 @@ export const ORDEN_ALERTAS = ['creadaEn', 'tipo', 'estado', 'id'] as const;
 const SELECCION = { id: true, tipo: true, mensaje: true, estado: true, destinatarioId: true, creadaEn: true, resueltaEn: true } as const;
 
 function visibilidad(usuario: Usuario) {
-  if (usuario.rol === 'DIRECTOR_EMPRESA') return { tenantId: usuario.tenantId };
+  if (usuario.rol === 'SUPERADMIN') return { tenantId: usuario.tenantId };
   return { tenantId: usuario.tenantId, OR: [{ destinatarioId: usuario.id }, { destinatarioId: null }] };
 }
 

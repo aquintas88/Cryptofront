@@ -133,7 +133,7 @@ describe('correo del sistema', () => {
   it('solo SUPERADMIN usa el correo del sistema', async () => {
     configurar();
     usarTransporteDePrueba(transporteFalso('ok'));
-    const { usuario } = await crearUsuario({ rol: 'DIRECTOR_EMPRESA' });
+    const { usuario } = await crearUsuario({ rol: 'USUARIO' });
     const token = await tokenDe(app, usuario.email);
     const res = await request(app).get('/api/plataforma/correo/estado').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(403);

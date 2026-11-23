@@ -1,0 +1,9 @@
+-- Se eliminan los roles DIRECTOR_EMPRESA y COORDINADOR. Sus cuentas pasan a USUARIO.
+UPDATE "Usuario" SET "rol" = 'USUARIO' WHERE "rol" IN ('DIRECTOR_EMPRESA', 'COORDINADOR');
+
+ALTER TABLE "Usuario" ALTER COLUMN "rol" DROP DEFAULT;
+CREATE TYPE "Rol_nuevo" AS ENUM ('SUPERADMIN', 'USUARIO', 'INVERSOR');
+ALTER TABLE "Usuario" ALTER COLUMN "rol" TYPE "Rol_nuevo" USING ("rol"::text::"Rol_nuevo");
+DROP TYPE "Rol";
+ALTER TYPE "Rol_nuevo" RENAME TO "Rol";
+ALTER TABLE "Usuario" ALTER COLUMN "rol" SET DEFAULT 'USUARIO';

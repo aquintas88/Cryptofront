@@ -4,13 +4,13 @@ import { crearApp } from '../src/app';
 import { prisma } from '../src/lib/prisma';
 import { PASSWORD_PRUEBA, crearEmpresa, crearUsuario, emailUnico, limpiarBD, tokenDe } from './helpers';
 
-// Permisos por rol dentro de una empresa:
-//   DIRECTOR_EMPRESA: gestiona sucursales y usuarios.
-//   COORDINADOR:      lee sucursales y usuarios; no escribe.
-//   USUARIO:          lee sucursales; no ve usuarios ni escribe.
+// Permisos por rol. Los roles de empresa (director y coordinador) se han eliminado:
+//   SUPERADMIN: gestiona la organización (sucursales y usuarios).
+//   USUARIO:    lee sucursales; no ve usuarios ni escribe.
+//   INVERSOR:   solo la zona de inversores.
 const app = crearApp({ limiteAuth: 1000 });
 
-async function tokenDeRol(tenantId: string, rol: 'DIRECTOR_EMPRESA' | 'COORDINADOR' | 'USUARIO') {
+async function tokenDeRol(tenantId: string, rol: 'SUPERADMIN' | 'USUARIO') {
   const { usuario } = await crearUsuario({ tenantId, rol });
   return tokenDe(app, usuario.email);
 }
@@ -22,18 +22,18 @@ describe('roles dentro de la empresa', () => {
     await prisma.$disconnect();
   });
 
-  it('el coordinador puede leer sucursales y usuarios de su empresa', async () => {
+  it('el superadmin puede leer sucursales y usuarios de la empresa', async () => {
     const empresa = await crearEmpresa();
-    const token = await tokenDeRol(empresa.id, 'COORDINADOR');
+    const token = await tokenDeRol(empresa.id, 'SUPERADMIN');
     const suc = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`);
     const usr = await request(app).get('/api/organizacion/usuarios').set('Authorization', `Bearer ${token}`);
     expect(suc.status).toBe(200);
     expect(usr.status).toBe(200);
   });
 
-  it('el coordinador no puede crear sucursales ni usuarios', async () => {
+  it('un usuario no puede crear sucursales ni usuarios', async () => {
     const empresa = await crearEmpresa();
-    const token = await tokenDeRol(empresa.id, 'COORDINADOR');
+    const token = await tokenDeRol(empresa.id, 'USUARIO');
     const suc = await request(app).post('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`).send({ nombre: 'X' });
     const usr = await request(app)
       .post('/api/organizacion/usuarios')
@@ -43,7 +43,7 @@ describe('roles dentro de la empresa', () => {
     expect(usr.status).toBe(403);
   });
 
-  it('el usuario normal puede leer sucursales pero no ver usuarios', async () => {
+  it('el usuario puede leer sucursales pero no ver usuarios', async () => {
     const empresa = await crearEmpresa();
     const token = await tokenDeRol(empresa.id, 'USUARIO');
     const suc = await request(app).get('/api/organizacion/sucursales').set('Authorization', `Bearer ${token}`);
@@ -52,10 +52,10 @@ describe('roles dentro de la empresa', () => {
     expect(usr.status).toBe(403);
   });
 
-  it('el director puede crear usuarios con cualquier rol de empresa', async () => {
+  it('el superadmin puede crear usuarios de empresa', async () => {
     const empresa = await crearEmpresa();
-    const token = await tokenDeRol(empresa.id, 'DIRECTOR_EMPRESA');
-    for (const rol of ['DIRECTOR_EMPRESA', 'COORDINADOR', 'USUARIO']) {
+    const token = await tokenDeRol(empresa.id, 'SUPERADMIN');
+    for (const rol of ['USUARIO', 'USUARIO']) {
       const res = await request(app)
         .post('/api/organizacion/usuarios')
         .set('Authorization', `Bearer ${token}`)
@@ -67,7 +67,7 @@ describe('roles dentro de la empresa', () => {
 
   it('el rol SUPERADMIN no se puede asignar desde una empresa', async () => {
     const empresa = await crearEmpresa();
-    const token = await tokenDeRol(empresa.id, 'DIRECTOR_EMPRESA');
+    const token = await tokenDeRol(empresa.id, 'SUPERADMIN');
     const res = await request(app)
       .post('/api/organizacion/usuarios')
       .set('Authorization', `Bearer ${token}`)

@@ -7,7 +7,7 @@ import { PASSWORD_PRUEBA, crearEmpresa, crearUsuario, emailUnico, limpiarBD, tok
 const app = crearApp({ limiteAuth: 1000 });
 
 async function directorDe(tenantId: string) {
-  const { usuario } = await crearUsuario({ tenantId, rol: 'DIRECTOR_EMPRESA' });
+  const { usuario } = await crearUsuario({ tenantId, rol: 'SUPERADMIN' });
   return { usuario, token: await tokenDe(app, usuario.email) };
 }
 

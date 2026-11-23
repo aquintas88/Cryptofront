@@ -58,7 +58,7 @@ export async function listarEventos(tenantId: string, desde: Date, hasta: Date, 
 async function eventoEditable(usuario: Usuario, id: string) {
   const evento = await prisma.evento.findFirst({ where: { id, tenantId: usuario.tenantId } });
   if (!evento) throw new ErrorApp(404, 'No encontrado');
-  if (usuario.rol !== 'DIRECTOR_EMPRESA' && evento.creadoPorId !== usuario.id) {
+  if (usuario.rol !== 'SUPERADMIN' && evento.creadoPorId !== usuario.id) {
     throw new ErrorApp(403, 'Solo puedes modificar tus eventos');
   }
   return evento;

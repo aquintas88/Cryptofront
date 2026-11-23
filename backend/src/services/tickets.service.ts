@@ -13,7 +13,7 @@ const SELECCION = {
 } as const;
 
 function visibilidad(usuario: Usuario) {
-  return usuario.rol === 'DIRECTOR_EMPRESA'
+  return usuario.rol === 'SUPERADMIN'
     ? { tenantId: usuario.tenantId }
     : { tenantId: usuario.tenantId, creadoPorId: usuario.id };
 }

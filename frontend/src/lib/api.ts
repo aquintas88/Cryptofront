@@ -61,7 +61,6 @@ export const api = {
   serie: (producto: string | null, periodo: string) =>
     peticion<{ datos: PuntoSerie[] }>(`/api/inversiones/serie?periodo=${periodo}${producto ? `&producto=${producto}` : ''}`),
   movimientos: () => peticion<{ datos: Movimiento[] }>('/api/inversiones/movimientos?limite=20'),
-  resumenGestion: () => peticion<ResumenGestion>('/api/inversiones/gestion/resumen'),
   rentabilidad: () => peticion<Rentabilidad>('/api/inversiones/rentabilidad'),
   cargasPlataforma: () => peticion<{ cargas: CargaPlataforma[] }>('/api/plataforma/cargas'),
   cambiarPassword: async (actual: string, nueva: string) => {
@@ -127,11 +126,6 @@ export interface ResumenInversor {
 }
 export interface PuntoSerie { fecha: string; valor: number; capitalAportado: number }
 export interface Movimiento { id: string; tipo: string; importe: number; fecha: string; producto: Producto }
-export interface ResumenGestion {
-  inversores: number; aportado: number; valor: number; retirado: number; comisiones: number; beneficio: number; roiPct: number;
-  porProducto: { producto: Producto; inversores: number; posiciones: number; aportado: number; valor: number;
-    retirado: number; comisiones: number; beneficio: number; roiPct: number }[];
-}
 export type Producto = 'BOT_TRADING' | 'PROYECTO_CRYPTO' | 'TOKEN_SHARE';
 
 export interface RentabilidadMes { mes: string; parcial: boolean; rentabilidadPct: number; acumuladaPct: number; valorFin: number }

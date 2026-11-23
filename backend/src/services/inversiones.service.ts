@@ -136,43 +136,6 @@ export async function movimientosInversor(u: UsuarioContexto, limite: number) {
   })));
 }
 
-// Panel de gestión (DIRECTOR_EMPRESA): todas las posiciones de la empresa.
-export async function resumenGestion(u: UsuarioContexto) {
-  const d = await cargar(u, null);
-  const pos = agregarPorPosicion(d);
-  const porProducto = PRODUCTOS.map((producto) => {
-    const ps = pos.filter((p) => p.producto === producto);
-    const ap = ps.reduce((s, p) => s + p.aportado, 0);
-    const va = ps.reduce((s, p) => s + p.valorActual, 0);
-    const ret = ps.reduce((s, p) => s + p.retirado, 0);
-    const com = ps.reduce((s, p) => s + p.comisiones, 0);
-    return {
-      producto,
-      inversores: new Set(ps.map((p) => p.inversorId)).size,
-      posiciones: ps.length,
-      aportado: redondear(ap),
-      valor: redondear(va),
-      retirado: redondear(ret),
-      comisiones: redondear(com),
-      beneficio: redondear(va + ret - ap),
-      roiPct: ap ? redondear(((va + ret - ap) / ap) * 100) : 0,
-    };
-  });
-  const total = (k: 'aportado' | 'valor' | 'retirado' | 'comisiones' | 'beneficio') =>
-    redondear(porProducto.reduce((s, p) => s + p[k], 0));
-  const aportadoTotal = total('aportado');
-  return {
-    inversores: new Set(pos.map((p) => p.inversorId)).size,
-    aportado: aportadoTotal,
-    valor: total('valor'),
-    retirado: total('retirado'),
-    comisiones: total('comisiones'),
-    beneficio: total('beneficio'),
-    roiPct: aportadoTotal ? redondear((total('beneficio') / aportadoTotal) * 100) : 0,
-    porProducto,
-  };
-}
-
 // Rentabilidad mensual y acumulada (Dietz simplificado): la base es el valor del mes anterior más los
 // aportes netos del mes. El mes en curso se marca como parcial.
 function rentabilidadMeses(d: Awaited<ReturnType<typeof cargar>>) {

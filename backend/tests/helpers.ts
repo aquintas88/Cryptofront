@@ -10,7 +10,7 @@ export const PASSWORD_PRUEBA = 'contraseña-ficticia-larga-1';
 export async function limpiarBD() {
   // Las tablas de inversiones tienen RLS: se limpian dentro del contexto de gestión de cada empresa.
   for (const { id } of await prisma.tenant.findMany({ select: { id: true } })) {
-    await conContextoRls({ id: 'limpieza', tenantId: id, rol: 'DIRECTOR_EMPRESA' }, async (tx) => {
+    await conContextoRls({ id: 'limpieza', tenantId: id, rol: 'SUPERADMIN' }, async (tx) => {
       await tx.movimientoInversion.deleteMany();
       await tx.valorDiarioInversion.deleteMany();
       await tx.posicionInversion.deleteMany();
@@ -48,7 +48,7 @@ export async function crearPlataforma() {
 export async function crearUsuario(
   opciones: {
     tenantId?: string;
-    rol?: 'SUPERADMIN' | 'DIRECTOR_EMPRESA' | 'COORDINADOR' | 'USUARIO' | 'INVERSOR';
+    rol?: 'SUPERADMIN' | 'SUPERADMIN' | 'USUARIO' | 'INVERSOR';
     email?: string;
     password?: string;
     activo?: boolean;

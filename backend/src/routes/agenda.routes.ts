@@ -20,7 +20,7 @@ router.get('/', asincrona(async (req, res) => {
 }));
 
 // Crear y editar: director y coordinador. Cada uno edita sus eventos; el director, todos.
-router.post('/', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.post('/', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const evento = await agenda.crearEvento(res.locals.usuario as Usuario, {
     titulo: texto(req.body?.titulo, 'titulo', { max: 160 }),
     descripcion: textoOpcional(req.body?.descripcion, 'descripcion', 2000),
@@ -31,7 +31,7 @@ router.post('/', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async
   res.status(201).json({ evento });
 }));
 
-router.patch('/:id', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.patch('/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   const cambios: { titulo?: string; descripcion?: string | null; inicio?: Date; fin?: Date; ubicacion?: string | null } = {};
   if (req.body?.titulo !== undefined) cambios.titulo = texto(req.body.titulo, 'titulo', { max: 160 });
   if (req.body?.descripcion !== undefined) cambios.descripcion = textoOpcional(req.body.descripcion, 'descripcion', 2000);
@@ -43,7 +43,7 @@ router.patch('/:id', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(a
   res.json({ evento });
 }));
 
-router.delete('/:id', requiereRol('DIRECTOR_EMPRESA', 'COORDINADOR'), asincrona(async (req, res) => {
+router.delete('/:id', requiereRol('SUPERADMIN'), asincrona(async (req, res) => {
   res.json(await agenda.eliminarEvento(res.locals.usuario as Usuario, idValido(req.params.id, 'id')));
 }));
 

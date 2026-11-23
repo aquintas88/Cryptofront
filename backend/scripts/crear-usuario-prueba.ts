@@ -15,7 +15,7 @@ async function main() {
     return;
   }
   await prisma.usuario.create({
-    data: { tenantId: empresa.id, email, nombre: 'Usuario de prueba', rol: rol as 'DIRECTOR_EMPRESA', passwordHash: hashPassword(password) },
+    data: { tenantId: empresa.id, email, nombre: 'Usuario de prueba', rol: rol as 'SUPERADMIN', passwordHash: hashPassword(password) },
   });
   console.log(`Creado: ${email} (${rol})`);
 }
