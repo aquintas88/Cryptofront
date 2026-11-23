@@ -1,0 +1,4 @@
+# PRE: no indexar mientras el entorno sea de pruebas.
+# Al pasar a PRO, cambiar a «Allow: /» y añadir el sitemap con el dominio definitivo.
+User-agent: *
+Disallow: /
