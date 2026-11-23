@@ -75,7 +75,7 @@ export async function crearUsuario(
 export async function tokenDe(app: Parameters<typeof request>[0], email: string, password = PASSWORD_PRUEBA) {
   const res = await request(app).post('/api/auth/login').send({ email, password });
   if (res.status !== 200 || !res.body.accessToken) {
-    throw new Error(`No se pudo iniciar sesión en la prueba: ${res.status}`);
+    throw new Error(`No se pudo iniciar sesión en la prueba: ${res.status} ${JSON.stringify(res.body).slice(0, 200)}`);
   }
   return res.body.accessToken as string;
 }
