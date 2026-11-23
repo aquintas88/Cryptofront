@@ -52,6 +52,12 @@ router.get('/yo', requiereSesion, asincrona(async (_req, res) => {
   res.json({ usuario });
 }));
 
+router.post('/cambiar-password', requiereSesion, asincrona(async (req, res) => {
+  const actual = texto(req.body?.actual, 'actual', 200);
+  const nueva = texto(req.body?.nueva, 'nueva', 200);
+  res.json(await auth.cambiarPassword(res.locals.usuario.id, actual, nueva));
+}));
+
 router.post('/2fa/configurar', requiereSesion, asincrona(async (_req, res) => {
   res.json(await auth.configurar2FA(res.locals.usuario.id));
 }));

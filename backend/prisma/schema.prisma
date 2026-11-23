@@ -71,6 +71,9 @@ model Usuario {
   intentosFallidos          Int              @default(0)
   bloqueadoHasta            DateTime?
   twoFactorActivo           Boolean          @default(false)
+  // Clave temporal emitida por la plataforma: obliga a cambiarla antes de usar la aplicación.
+  debeCambiarPassword       Boolean          @default(false)
+  passwordCambiadaEn        DateTime?
   // Secretos TOTP cifrados (AES-256-GCM). Nunca en claro, nunca en respuestas de la API.
   twoFactorSecretoCifrado   String?
   twoFactorPendienteCifrado String?

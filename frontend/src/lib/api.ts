@@ -2,7 +2,7 @@
 import { useSesion } from './sesion';
 
 export interface EstadoServicio { status: string; servicio: string }
-export interface UsuarioPublico { id: string; email: string; nombre: string; rol: string; twoFactorActivo: boolean; idioma: 'es' | 'en' }
+export interface UsuarioPublico { id: string; email: string; nombre: string; rol: string; twoFactorActivo: boolean; idioma: 'es' | 'en'; debeCambiarPassword: boolean }
 
 export async function obtenerEstado(): Promise<EstadoServicio> {
   const res = await fetch('/health');
@@ -64,7 +64,54 @@ export const api = {
   resumenGestion: () => peticion<ResumenGestion>('/api/inversiones/gestion/resumen'),
   rentabilidad: () => peticion<Rentabilidad>('/api/inversiones/rentabilidad'),
   cargasPlataforma: () => peticion<{ cargas: CargaPlataforma[] }>('/api/plataforma/cargas'),
+  cambiarPassword: async (actual: string, nueva: string) => {
+    const datos = await peticion<{ accessToken: string; refreshToken: string; usuario: UsuarioPublico }>(
+      '/api/auth/cambiar-password', { method: 'POST', body: JSON.stringify({ actual, nueva }) });
+    useSesion.getState().guardar(datos);
+    return datos;
+  },
+  plataforma: {
+    usuarios: (filtros: Record<string, string>) => {
+      const qs = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v)).toString();
+      return peticion<{ usuarios: CuentaPlataforma[] }>(`/api/plataforma/usuarios${qs ? `?${qs}` : ''}`);
+    },
+    crearUsuario: (datos: { email: string; nombre: string; rol: string; tenantId: string }) =>
+      peticion<{ usuario: { id: string; email: string }; claveTemporal: string }>('/api/plataforma/usuarios', { method: 'POST', body: JSON.stringify(datos) }),
+    editarUsuario: (id: string, cambios: { nombre?: string; rol?: string; activo?: boolean }) =>
+      peticion<{ usuario: unknown }>(`/api/plataforma/usuarios/${id}`, { method: 'PATCH', body: JSON.stringify(cambios) }),
+    restablecerClave: (id: string) =>
+      peticion<{ claveTemporal: string }>(`/api/plataforma/usuarios/${id}/restablecer-clave`, { method: 'POST' }),
+    desbloquear: (id: string) => peticion<void>(`/api/plataforma/usuarios/${id}/desbloquear`, { method: 'POST' }),
+    cerrarSesiones: (id: string) => peticion<{ cerradas: number }>(`/api/plataforma/usuarios/${id}/cerrar-sesiones`, { method: 'POST' }),
+    empresas: () => peticion<{ empresas: { id: string; nombre: string }[] }>('/api/plataforma/empresas'),
+    detalle: (id: string) => peticion<{ usuario: CuentaPlataforma & { tenant: { nombre: string } } }>(`/api/plataforma/usuarios/${id}`),
+    ficha: (id: string) => peticion<FichaInversor>(`/api/plataforma/usuarios/${id}/ficha`),
+    crearMovimiento: (id: string, datos: { tipo: string; importe: number; fecha: string; producto: string; motivo: string }) =>
+      peticion<{ movimiento: unknown }>(`/api/plataforma/usuarios/${id}/movimientos`, { method: 'POST', body: JSON.stringify(datos) }),
+    corregirMovimiento: (id: string, movId: string, datos: { importe?: number; fecha?: string; motivo: string }) =>
+      peticion<{ movimiento: unknown }>(`/api/plataforma/usuarios/${id}/movimientos/${movId}`, { method: 'PATCH', body: JSON.stringify(datos) }),
+    auditoria: (filtros: Record<string, string>) => {
+      const qs = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v)).toString();
+      return peticion<{ registros: RegistroAuditoria[] }>(`/api/plataforma/auditoria${qs ? `?${qs}` : ''}`);
+    },
+  },
 };
+
+export interface CuentaPlataforma {
+  id: string; email: string; nombre: string; rol: string; activo: boolean; twoFactorActivo: boolean;
+  intentosFallidos: number; bloqueadoHasta: string | null; debeCambiarPassword: boolean;
+  passwordCambiadaEn: string | null; creadoEn: string; ultimoAcceso: string | null; tenantId: string;
+  tenant: { nombre: string; esPlataforma: boolean };
+}
+export interface FichaInversor {
+  inversor: { id: string; nombre: string; email: string };
+  posiciones: { id: string; producto: Producto; estado: string; fechaAlta: string; capitalAportado: number }[];
+  movimientos: { id: string; tipo: string; importe: number; fecha: string; producto: Producto }[];
+}
+export interface RegistroAuditoria {
+  id: string; entidad: string; entidadId: string | null; accion: string; cambios: unknown; creadoEn: string;
+  tenantId: string | null; actor: { id: string; email: string; nombre: string } | null;
+}
 
 export interface ResumenInversor {
   patrimonio: number; capitalAportado: number; ganancia: number; roiPct: number; gananciaMes: number;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from './lib/api';
 import { useSesion } from './lib/sesion';
 import Login from './pages/Login';
+import CambiarPassword from './pages/CambiarPassword';
 import Inversor from './pages/Inversor';
 import Gestion from './pages/Gestion';
 import Plataforma from './pages/Plataforma';
@@ -27,6 +28,7 @@ export default function App() {
 
   if (restaurando) return <p className="p-6 text-sm text-slate-500">Cargando…</p>;
   if (!usuario) return <Login />;
+  if (usuario.debeCambiarPassword) return <CambiarPassword />;
   if (usuario.rol === 'INVERSOR') return <Inversor />;
   if (usuario.rol === 'DIRECTOR_EMPRESA') return <Gestion />;
   if (usuario.rol === 'SUPERADMIN') return <Plataforma />;

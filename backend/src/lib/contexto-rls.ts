@@ -28,3 +28,19 @@ export async function conContextoRls<T>(
     return operacion(tx);
   });
 }
+
+// Operación de la plataforma (SUPERADMIN) sobre una empresa concreta: acceso de gestión a esa empresa.
+// Solo para operaciones que quedan registradas en la auditoría con el usuario que las hace.
+export async function conContextoPlataforma<T>(
+  actorId: string,
+  tenantId: string,
+  operacion: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT
+      set_config('app.tenant_id', ${tenantId}, true),
+      set_config('app.usuario_id', ${actorId}, true),
+      set_config('app.acceso_total', 'on', true)`;
+    return operacion(tx);
+  });
+}

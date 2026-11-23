@@ -31,3 +31,7 @@ export const NOMBRE_PRODUCTO: Record<string, string> = {
   PROYECTO_CRYPTO: 'Proyecto crypto',
   TOKEN_SHARE: 'Share (token)',
 };
+
+// Fecha y hora en horario de Madrid (las cargas se guardan en UTC).
+export const fechaHora = (f: string | Date) =>
+  new Date(f).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });

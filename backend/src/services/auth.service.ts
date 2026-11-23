@@ -7,6 +7,7 @@ import { cifrar, descifrar, hashPassword, hashToken, tokenOpaco, verificarPasswo
 import { generarSecretoTOTP, uriOtpauth, verificarTOTP } from '../lib/totp';
 import { firmarAcceso, firmarPreDosFactores, verificarPreDosFactores } from '../lib/tokens';
 import { registrarAuditoria } from '../lib/auditoria';
+import { validarClaveNueva } from '../lib/claves';
 
 const LIMITE_FALLOS = 5;
 const DURACION_BLOQUEO_MS = 15 * 60 * 1000;
@@ -29,6 +30,7 @@ export interface UsuarioPublico {
   rol: string;
   twoFactorActivo: boolean;
   idioma: string;
+  debeCambiarPassword: boolean;
 }
 
 export interface ResultadoSesion {
@@ -51,6 +53,7 @@ async function publico(u: Usuario): Promise<UsuarioPublico> {
     rol: u.rol,
     twoFactorActivo: u.twoFactorActivo,
     idioma: empresa?.idioma ?? 'es',
+    debeCambiarPassword: u.debeCambiarPassword,
   };
 }
 
@@ -135,6 +138,7 @@ export async function login(email: string, password: string): Promise<ResultadoL
     throw new ErrorApp(401, MSG_CREDENCIALES);
   }
   await registrarExito(u.id);
+  await registrarAuditoria(prisma, { tenantId: u.tenantId, actorId: u.id, entidad: 'Sesion', entidadId: u.id, accion: 'EVENTO', cambios: { evento: 'inicio de sesión' } });
 
   if (u.twoFactorActivo) {
     const preToken = firmarPreDosFactores(u, cargarConfig().jwtSecret);
@@ -239,6 +243,24 @@ export async function cerrarSesion(refreshToken: string) {
     where: { tokenHash: hashToken(refreshToken), revocadaEn: null },
     data: { revocadaEn: new Date() },
   });
+}
+
+// Cambio de contraseña por el propio usuario. Cierra el resto de sesiones y devuelve una sesión nueva.
+export async function cambiarPassword(usuarioId: string, actual: string, nueva: string): Promise<ResultadoSesion> {
+  const u = await prisma.usuario.findUnique({ where: { id: usuarioId } });
+  if (!u || !u.activo) throw new ErrorApp(401, 'Sesión no válida');
+  if (!verificarPassword(actual, u.passwordHash)) throw new ErrorApp(401, 'La contraseña actual no es correcta');
+  validarClaveNueva(nueva, actual);
+  const actualizado = await prisma.$transaction(async (tx) => {
+    const cambiado = await tx.usuario.update({
+      where: { id: u.id },
+      data: { passwordHash: hashPassword(nueva), debeCambiarPassword: false, passwordCambiadaEn: new Date() },
+    });
+    await tx.sesionRefresco.updateMany({ where: { usuarioId: u.id, revocadaEn: null }, data: { revocadaEn: new Date() } });
+    await registrarAuditoria(tx, { tenantId: u.tenantId, actorId: u.id, entidad: 'Usuario', entidadId: u.id, accion: 'EVENTO', cambios: { evento: 'cambio de contraseña' } });
+    return cambiado;
+  });
+  return crearSesion(actualizado);
 }
 
 export async function obtenerUsuario(usuarioId: string): Promise<UsuarioPublico | null> {
