@@ -151,7 +151,7 @@ export async function restablecerClave(actorId: string, id: string) {
   await prisma.$transaction(async (tx) => {
     await tx.usuario.update({
       where: { id },
-      data: { passwordHash: hashPassword(claveTemporal), debeCambiarPassword: true, intentosFallidos: 0, bloqueadoHasta: null },
+      data: { passwordHash: hashPassword(claveTemporal), debeCambiarPassword: true, passwordCambiadaEn: new Date(), intentosFallidos: 0, bloqueadoHasta: null },
     });
     await tx.sesionRefresco.updateMany({ where: { usuarioId: id, revocadaEn: null }, data: { revocadaEn: new Date() } });
     await registrarAuditoria(tx, { tenantId: u.tenantId, actorId, entidad: 'Usuario', entidadId: id, accion: 'EVENTO', cambios: { evento: 'restablecer contraseña temporal' } });

@@ -29,7 +29,7 @@ export function firmarPreDosFactores(usuario: Pick<UsuarioToken, 'id' | 'tenantI
   });
 }
 
-function verificar(token: string, secreto: string, purpose: string): { sub: string; tenantId: string } {
+function verificar(token: string, secreto: string, purpose: string): { sub: string; tenantId: string; iat: number } {
   let carga: jwt.JwtPayload;
   try {
     carga = jwt.verify(token, secreto, { algorithms: ['HS256'], issuer: EMISOR }) as jwt.JwtPayload;
@@ -39,7 +39,7 @@ function verificar(token: string, secreto: string, purpose: string): { sub: stri
   if (carga.purpose !== purpose || typeof carga.sub !== 'string' || typeof carga.tenantId !== 'string') {
     throw new ErrorApp(401, 'Token no válido o caducado');
   }
-  return { sub: carga.sub, tenantId: carga.tenantId };
+  return { sub: carga.sub, tenantId: carga.tenantId, iat: carga.iat ?? 0 };
 }
 
 export function verificarAcceso(token: string, secreto: string) {

@@ -108,3 +108,20 @@ describe('cuentas gestionadas por la plataforma', () => {
     expect(JSON.stringify(alta.cambios)).not.toMatch(/passwordHash|clave/i);
   });
 });
+
+describe('sesiones tras cambiar la contraseña', () => {
+  it('un token emitido antes del cambio deja de valer', async () => {
+    await limpiarBD();
+    const { usuario, password } = await crearUsuario({ tenantId: (await crearEmpresa()).id, rol: 'INVERSOR' });
+    const antiguo = await tokenDe(app, usuario.email, password);
+    await new Promise((r) => setTimeout(r, 1100));
+    const cambio = await request(app).post('/api/auth/cambiar-password').set('Authorization', `Bearer ${antiguo}`)
+      .send({ actual: password, nueva: 'OtraClaveSegura2026' });
+    expect(cambio.status).toBe(200);
+    const sinValor = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${antiguo}`);
+    expect(sinValor.status).toBe(401);
+    const nuevo = cambio.body.accessToken as string;
+    const conNuevo = await request(app).get('/api/auth/yo').set('Authorization', `Bearer ${nuevo}`);
+    expect(conNuevo.status).toBe(200);
+  });
+});

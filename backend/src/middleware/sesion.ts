@@ -14,9 +14,11 @@ export async function requiereSesion(req: Request, res: Response, next: NextFunc
     const cabecera = req.headers.authorization;
     if (!cabecera?.startsWith('Bearer ')) throw new ErrorApp(401, 'Token requerido');
 
-    const { sub, tenantId } = verificarAcceso(cabecera.slice(7), cargarConfig().jwtSecret);
+    const { sub, tenantId, iat } = verificarAcceso(cabecera.slice(7), cargarConfig().jwtSecret);
     const u = await prisma.usuario.findUnique({ where: { id: sub } });
     if (!u || !u.activo || u.tenantId !== tenantId) throw new ErrorApp(401, 'Sesión no válida');
+    // Un token emitido antes del último cambio de contraseña ya no vale (comparación por segundos).
+    if (u?.passwordCambiadaEn && iat < Math.floor(u.passwordCambiadaEn.getTime() / 1000)) throw new ErrorApp(401, 'Sesión no válida');
 
     // Con clave temporal, solo se puede cambiar la contraseña o cerrar sesión.
     const ruta = req.originalUrl.split('?')[0];
