@@ -1,10 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ZONA } from '../lib/zona';
 import type { Idioma } from '../web/textos';
 import type { ResumenInversor, Rentabilidad, Movimiento, Producto } from '../lib/api';
 import Grafico from './Grafico';
 import { eur, pct, fecha, mesLargo } from './formato';
+import { GraficoMensual } from './GraficoMensual';
+import { Table, Pagination, type Column } from './ui/Table';
+import { sortBy, useSortable } from './ui/tabla';
+import { Input } from './ui/Input';
 
 // Fuentes de datos del panel: el inversor usa sus propias consultas; la plataforma, las de un inversor
 // concreto o las acumuladas de la empresa. Mismo panel en los dos casos.
@@ -33,6 +37,52 @@ export function PanelInversion({ clave, fuentes, idioma, titulo, cabeceraExtra }
   const movs = useQuery({ queryKey: [clave, 'movimientos'], queryFn: fuentes.movimientos });
   const renta = useQuery({ queryKey: [clave, 'rentabilidad'], queryFn: fuentes.rentabilidad });
   const r = resumen.data;
+
+  // Filtro de periodo (año o rango de meses) para la gráfica y la tabla mensual.
+  const [anio, setAnio] = useState<string>('todos');
+  const [desdeMes, setDesdeMes] = useState<string>('');
+  const [hastaMes, setHastaMes] = useState<string>('');
+  const aniosDisponibles = useMemo(() => [...new Set((renta.data?.meses ?? []).map((m) => m.mes.slice(0, 4)))].sort(), [renta.data]);
+  const mesesFiltrados = useMemo(() => (renta.data?.meses ?? []).filter((m) => {
+    if (desdeMes && m.mes < desdeMes) return false;
+    if (hastaMes && m.mes > hastaMes) return false;
+    if (!desdeMes && !hastaMes && anio !== 'todos') return m.mes.startsWith(anio);
+    return true;
+  }), [renta.data, anio, desdeMes, hastaMes]);
+  const mesesOrdenados = useMemo(() => [...mesesFiltrados].sort((a, b) => (a.mes < b.mes ? 1 : -1)), [mesesFiltrados]);
+  const totalEurPeriodo = mesesFiltrados.reduce((acc, m) => acc + m.gananciaEur, 0);
+
+  // Movimientos: filtros por tipo, producto y fechas; orden por columna; paginación.
+  const [tipoFiltro, setTipoFiltro] = useState('');
+  const [productoFiltro, setProductoFiltro] = useState('');
+  const [desdeFecha, setDesdeFecha] = useState('');
+  const [hastaFecha, setHastaFecha] = useState('');
+  const [pagMov, setPagMov] = useState(1);
+  const { sort: sortMov, toggle: toggleMov } = useSortable<'fecha' | 'producto' | 'tipo' | 'importe'>('fecha', 'desc');
+  const filasMov = useMemo(() => (movs.data?.datos ?? [])
+    .filter((m) => (!tipoFiltro || m.tipo === tipoFiltro) && (!productoFiltro || m.producto === productoFiltro))
+    .filter((m) => (!desdeFecha || m.fecha.slice(0, 10) >= desdeFecha) && (!hastaFecha || m.fecha.slice(0, 10) <= hastaFecha))
+    .map((m) => ({ ...m, etiquetaTipo: z.tipoMovimiento[m.tipo] ?? m.tipo, etiquetaProducto: z.nombreProducto[m.producto] ?? m.producto })),
+  [movs.data, tipoFiltro, productoFiltro, desdeFecha, hastaFecha, z]);
+  const movOrdenados = sortBy(filasMov, sortMov.field as keyof (typeof filasMov)[number], sortMov.dir);
+  const movPaginas = Math.max(1, Math.ceil(movOrdenados.length / 20));
+  const movVisibles = movOrdenados.slice((pagMov - 1) * 20, pagMov * 20);
+  const columnasMov: Column<(typeof filasMov)[number]>[] = [
+    { key: 'fecha', header: z.colFecha, sortable: true, render: (m) => fecha(m.fecha, idioma) },
+    { key: 'producto', header: z.colEstrategia, sortable: true, render: (m) => m.etiquetaProducto },
+    { key: 'tipo', header: z.colTipo, sortable: true, render: (m) => m.etiquetaTipo },
+    { key: 'importe', header: z.colImporte, sortable: true, className: 'text-right', render: (m) => (
+      <span className={m.tipo === 'RETIRADA' ? 'text-red-700' : 'text-emerald-700'}>{m.tipo === 'RETIRADA' ? '−' : '+'}{eur(m.importe, idioma)}</span>
+    ) },
+  ];
+
+  const columnasMeses: Column<NonNullable<typeof renta.data>['meses'][number]>[] = [
+    { key: 'mes', header: z.colMes, render: (m) => (<>{mesLargo(m.mes, idioma)}{m.parcial && <span className="ml-2 rounded bg-[#c9a24a]/20 px-2 py-0.5 text-xs text-[#8a6a22]">{z.enCurso}</span>}</>) },
+    { key: 'rentabilidadPct', header: z.colRentMes, className: 'text-right', render: (m) => <span className={`font-medium ${m.rentabilidadPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{pct(m.rentabilidadPct, idioma)}</span> },
+    { key: 'gananciaEur', header: idioma === 'en' ? 'Gain (€)' : 'Ganancia (€)', className: 'text-right', render: (m) => eur(m.gananciaEur, idioma) },
+    { key: 'acumuladaPct', header: z.colAcumulada, className: 'text-right', render: (m) => <span className={m.acumuladaPct >= 0 ? 'text-emerald-700' : 'text-red-700'}>{pct(m.acumuladaPct, idioma)}</span> },
+    { key: 'valorFin', header: z.colValorFin, className: 'text-right', render: (m) => eur(m.valorFin, idioma) },
+  ];
 
   return (
     <div className="space-y-5">
@@ -93,8 +143,8 @@ export function PanelInversion({ clave, fuentes, idioma, titulo, cabeceraExtra }
         </section>
       )}
 
-      <section className="rounded-xl bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="space-y-4 rounded-xl bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="font-serif text-xl">{z.rentabilidadMensual}</h2>
             {renta.data && (
@@ -111,48 +161,57 @@ export function PanelInversion({ clave, fuentes, idioma, titulo, cabeceraExtra }
               </p>
             )}
           </div>
+          <div className="flex flex-wrap items-end gap-3 text-sm">
+            <label className="text-xs text-slate-500">{idioma === 'en' ? 'Year' : 'Año'}
+              <select value={anio} onChange={(e) => { setAnio(e.target.value); setDesdeMes(''); setHastaMes(''); }}
+                className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+                <option value="todos">{idioma === 'en' ? 'All' : 'Todos'}</option>
+                {aniosDisponibles.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </label>
+            <Input label={idioma === 'en' ? 'From (month)' : 'Desde (mes)'} type="month" value={desdeMes} onChange={(e) => { setDesdeMes(e.target.value); setAnio('todos'); }} />
+            <Input label={idioma === 'en' ? 'To (month)' : 'Hasta (mes)'} type="month" value={hastaMes} onChange={(e) => { setHastaMes(e.target.value); setAnio('todos'); }} />
+            <button onClick={() => { setAnio('todos'); setDesdeMes(''); setHastaMes(''); }} className="rounded border border-slate-300 px-3 py-2 text-xs">{idioma === 'en' ? 'Clear' : 'Limpiar'}</button>
+          </div>
         </div>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
-            <thead className="text-left text-xs text-slate-500">
-              <tr><th className="py-2">{z.colMes}</th><th className="text-right">{z.colRentMes}</th><th className="text-right">{z.colAcumulada}</th><th className="text-right">{z.colValorFin}</th></tr>
-            </thead>
-            <tbody>
-              {renta.data?.meses.slice().reverse().map((m) => (
-                <tr key={m.mes} className="border-t border-slate-100">
-                  <td className="py-2">{mesLargo(m.mes, idioma)}
-                    {m.parcial && <span className="ml-2 rounded bg-[#c9a24a]/20 px-2 py-0.5 text-xs text-[#8a6a22]">{z.enCurso}</span>}</td>
-                  <td className={`text-right font-medium ${m.rentabilidadPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{pct(m.rentabilidadPct, idioma)}</td>
-                  <td className={`text-right ${m.acumuladaPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{pct(m.acumuladaPct, idioma)}</td>
-                  <td className="text-right">{eur(m.valorFin, idioma)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <p className="text-sm text-slate-600">
+          {idioma === 'en' ? 'Gain in the period:' : 'Ganancia del periodo:'} <b className={totalEurPeriodo >= 0 ? 'text-emerald-700' : 'text-red-700'}>{eur(totalEurPeriodo, idioma)}</b>
+        </p>
+        <GraficoMensual meses={mesesFiltrados} idioma={idioma} />
+        <Table columns={columnasMeses} data={mesesOrdenados} keyExtractor={(m) => m.mes} emptyMessage={idioma === 'en' ? 'No months in this period' : 'Sin meses en este periodo'} />
+      </section>
+
+      <section className="space-y-3 rounded-xl bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-xl">{z.ultimosMovimientos}</h2>
+        <div className="flex flex-wrap items-end gap-3 text-sm">
+          <label className="text-xs text-slate-500">{z.colTipo}
+            <select value={tipoFiltro} onChange={(e) => { setTipoFiltro(e.target.value); setPagMov(1); }} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+              <option value="">{idioma === 'en' ? 'All' : 'Todos'}</option>
+              {Object.keys(z.tipoMovimiento).map((t) => <option key={t} value={t}>{z.tipoMovimiento[t]}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-slate-500">{z.colEstrategia}
+            <select value={productoFiltro} onChange={(e) => { setProductoFiltro(e.target.value); setPagMov(1); }} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+              <option value="">{idioma === 'en' ? 'All' : 'Todas'}</option>
+              {Object.keys(z.nombreProducto).map((p) => <option key={p} value={p}>{z.nombreProducto[p]}</option>)}
+            </select>
+          </label>
+          <Input label={idioma === 'en' ? 'From' : 'Desde'} type="date" value={desdeFecha} onChange={(e) => { setDesdeFecha(e.target.value); setPagMov(1); }} />
+          <Input label={idioma === 'en' ? 'To' : 'Hasta'} type="date" value={hastaFecha} onChange={(e) => { setHastaFecha(e.target.value); setPagMov(1); }} />
         </div>
+        <Table
+          columns={columnasMov}
+          data={movVisibles}
+          keyExtractor={(m) => m.id}
+          sortKey={sortMov.field}
+          sortDir={sortMov.dir}
+          onSort={(k) => { toggleMov(k as 'fecha' | 'producto' | 'tipo' | 'importe'); setPagMov(1); }}
+          emptyMessage={idioma === 'en' ? 'No transactions' : 'Sin movimientos'}
+        />
+        <Pagination page={pagMov} totalPages={movPaginas} onPage={setPagMov} total={movOrdenados.length} />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h2 className="font-serif text-xl">{z.ultimosMovimientos}</h2>
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-xs text-slate-500">
-              <tr><th className="py-1">{z.colFecha}</th><th>{z.colEstrategia}</th><th>{z.colTipo}</th><th className="text-right">{z.colImporte}</th></tr>
-            </thead>
-            <tbody>
-              {movs.data?.datos.map((m) => (
-                <tr key={m.id} className="border-t border-slate-100">
-                  <td className="py-1.5">{fecha(m.fecha, idioma)}</td>
-                  <td>{z.nombreProducto[m.producto]}</td>
-                  <td>{z.tipoMovimiento[m.tipo] ?? m.tipo}</td>
-                  <td className={`text-right ${m.tipo === 'RETIRADA' ? 'text-red-700' : 'text-emerald-700'}`}>
-                    {m.tipo === 'RETIRADA' ? '−' : '+'}{eur(m.importe, idioma)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
         <div className="rounded-xl bg-white p-5 shadow-sm">
           <h2 className="font-serif text-xl">{z.informes}</h2>
           <ul className="mt-3 space-y-3 text-sm">

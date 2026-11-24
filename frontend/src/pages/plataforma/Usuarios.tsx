@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type CuentaPlataforma, type FichaInversor } from '../../lib/api';
 import { eur, fecha, fechaHora, NOMBRE_PRODUCTO } from '../../components/formato';
 import { Table, Pagination, type Column } from '../../components/ui/Table';
+import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { sortBy, useSortable } from '../../components/ui/tabla';
 
@@ -35,28 +36,36 @@ function ClaveTemporal({ clave }: { clave: string }) {
   );
 }
 
+type FilaCuenta = CuentaPlataforma & { empresaNombre: string; estadoTexto: string; ultimoTexto: string };
+
 export default function Usuarios() {
   const qc = useQueryClient();
-  const [filtros, setFiltros] = useState({ q: '', rol: '', estado: '' });
+  const [filtros, setFiltros] = useState({ q: '', rol: '', estado: 'activo', tenantId: '', dosFactores: '', claveTemporal: '' });
   const q = useQuery({ queryKey: ['cuentas', filtros], queryFn: () => api.plataforma.usuarios(filtros) });
   const empresas = useQuery({ queryKey: ['empresas-plataforma'], queryFn: api.plataforma.empresas });
-  const { sort, toggle } = useSortable<Campo>('nombre', 'asc');
+  const { sort, toggle } = useSortable<'nombre' | 'email' | 'rol' | 'empresaNombre' | 'estadoTexto' | 'ultimoAcceso'>('nombre', 'asc');
   const [pagina, setPagina] = useState(1);
   const [nuevo, setNuevo] = useState(false);
   const [seleccion, setSeleccion] = useState<string | null>(null);
 
-  const cuentas = q.data?.usuarios ?? [];
-  const ordenadas = sortBy(cuentas, sort.field as keyof CuentaPlataforma, sort.dir);
+  const filas: FilaCuenta[] = (q.data?.usuarios ?? []).map((c) => ({
+    ...c,
+    empresaNombre: c.tenant.nombre,
+    estadoTexto: estadoCuenta(c).texto,
+    ultimoTexto: c.ultimoAcceso ?? '',
+  }));
+  const ordenadas = sortBy(filas, sort.field as keyof FilaCuenta, sort.dir);
   const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
   const visibles = ordenadas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+  const cambiar = (campo: keyof typeof filtros, valor: string) => { setFiltros({ ...filtros, [campo]: valor }); setPagina(1); };
 
-  const columnas: Column<CuentaPlataforma>[] = [
+  const columnas: Column<FilaCuenta>[] = [
     { key: 'nombre', header: 'Nombre', sortable: true },
     { key: 'email', header: 'Email', sortable: true, className: 'text-slate-600' },
     { key: 'rol', header: 'Rol', sortable: true, render: (c) => ETIQUETA_ROL[c.rol] ?? c.rol },
-    { key: 'tenant', header: 'Empresa', render: (c) => c.tenant.nombre },
+    { key: 'empresaNombre', header: 'Empresa', sortable: true },
     {
-      key: 'estado', header: 'Estado',
+      key: 'estadoTexto', header: 'Estado', sortable: true,
       render: (c) => { const e = estadoCuenta(c); return <span className={`rounded px-2 py-0.5 text-xs font-semibold ${e.clase}`}>{e.texto}</span>; },
     },
     { key: 'ultimoAcceso', header: 'Último acceso', sortable: true, render: (c) => (c.ultimoAcceso ? fechaHora(c.ultimoAcceso) : '—') },
@@ -65,18 +74,37 @@ export default function Usuarios() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
-        <input placeholder="Buscar por nombre o email" value={filtros.q} onChange={(e) => { setFiltros({ ...filtros, q: e.target.value }); setPagina(1); }}
-          className="w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        <select value={filtros.rol} onChange={(e) => { setFiltros({ ...filtros, rol: e.target.value }); setPagina(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <option value="">Todos los roles</option>
-          {ROLES.map((r) => <option key={r} value={r}>{ETIQUETA_ROL[r]}</option>)}
-        </select>
-        <select value={filtros.estado} onChange={(e) => { setFiltros({ ...filtros, estado: e.target.value }); setPagina(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <option value="">Cualquier estado</option>
-          <option value="activo">Activas</option>
-          <option value="bloqueado">Bloqueadas</option>
-          <option value="inactivo">Desactivadas</option>
-        </select>
+        <div className="w-64"><Input label="Buscar" placeholder="Nombre o email" value={filtros.q} onChange={(e) => cambiar('q', e.target.value)} /></div>
+        <label className="text-xs text-slate-500">Rol
+          <select value={filtros.rol} onChange={(e) => cambiar('rol', e.target.value)} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+            <option value="">Todos</option>
+            {ROLES.map((r) => <option key={r} value={r}>{ETIQUETA_ROL[r]}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-slate-500">Empresa
+          <select value={filtros.tenantId} onChange={(e) => cambiar('tenantId', e.target.value)} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+            <option value="">Todas</option>
+            {(empresas.data?.empresas ?? []).map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-slate-500">Estado
+          <select value={filtros.estado} onChange={(e) => cambiar('estado', e.target.value)} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+            <option value="activo">Activas</option>
+            <option value="bloqueado">Bloqueadas</option>
+            <option value="inactivo">Desactivadas</option>
+            <option value="todos">Todas</option>
+          </select>
+        </label>
+        <label className="text-xs text-slate-500">Segundo factor
+          <select value={filtros.dosFactores} onChange={(e) => cambiar('dosFactores', e.target.value)} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+            <option value="">Cualquiera</option><option value="si">Activo</option><option value="no">No activo</option>
+          </select>
+        </label>
+        <label className="text-xs text-slate-500">Clave temporal
+          <select value={filtros.claveTemporal} onChange={(e) => cambiar('claveTemporal', e.target.value)} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+            <option value="">Cualquiera</option><option value="si">Pendiente</option><option value="no">No</option>
+          </select>
+        </label>
         <button onClick={() => setNuevo(true)} className="ml-auto rounded-full bg-[#07152b] px-4 py-2 text-sm font-semibold text-white">Nuevo usuario</button>
       </div>
       {q.isError && <p className="text-sm text-red-700">No se pudieron cargar las cuentas.</p>}
@@ -86,7 +114,7 @@ export default function Usuarios() {
         keyExtractor={(c) => c.id}
         sortKey={sort.field}
         sortDir={sort.dir}
-        onSort={(k) => { toggle(k as Campo); setPagina(1); }}
+        onSort={(k) => { toggle(k as typeof sort.field); setPagina(1); }}
         onRowClick={(c) => setSeleccion(c.id)}
         emptyMessage="No hay cuentas con esos filtros"
       />
@@ -299,34 +327,30 @@ function FichaInversorView({ id }: { id: string }) {
 
       <div>
         <p className="mb-2 font-semibold">Movimientos</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-slate-500">
-              <tr><th className="py-1">Fecha</th><th>Producto</th><th>Tipo</th><th className="text-right">Importe</th><th /></tr>
-            </thead>
-            <tbody>
-              {ficha.movimientos.map((m) => (
-                <tr key={m.id} className="border-t border-slate-100 align-top">
-                  <td className="py-1.5">{fecha(m.fecha)}</td>
-                  <td>{NOMBRE_PRODUCTO[m.producto]}</td>
-                  <td>{m.tipo}</td>
-                  <td className="text-right">{eur(m.importe)}</td>
-                  <td className="text-right">
-                    <button onClick={() => { setEditando(m.id); setCorreccion({ importe: '', fecha: '', motivo: '' }); }} className="text-xs underline">Corregir</button>
-                    {editando === m.id && (
-                      <div className="mt-2 grid gap-2 rounded bg-slate-50 p-2 text-left">
-                        <input type="number" step="0.01" placeholder="Nuevo importe (opcional)" value={correccion.importe} onChange={(e) => setCorreccion({ ...correccion, importe: e.target.value })} className="rounded border border-slate-300 px-2 py-1 text-xs" />
-                        <input type="date" value={correccion.fecha} onChange={(e) => setCorreccion({ ...correccion, fecha: e.target.value })} className="rounded border border-slate-300 px-2 py-1 text-xs" />
-                        <input placeholder="Motivo de la corrección" value={correccion.motivo} onChange={(e) => setCorreccion({ ...correccion, motivo: e.target.value })} className="rounded border border-slate-300 px-2 py-1 text-xs" />
-                        <button onClick={() => corregir(m.id)} className="rounded bg-[#07152b] px-2 py-1 text-xs text-white">Guardar corrección</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={[
+            { key: 'fecha', header: 'Fecha', render: (m) => fecha(m.fecha) },
+            { key: 'producto', header: 'Producto', render: (m) => NOMBRE_PRODUCTO[m.producto] },
+            { key: 'tipo', header: 'Tipo' },
+            { key: 'importe', header: 'Importe', className: 'text-right', render: (m) => eur(m.importe) },
+            { key: 'acciones', header: '', className: 'text-right', render: (m) => (
+              <div>
+                <button onClick={() => { setEditando(m.id); setCorreccion({ importe: '', fecha: '', motivo: '' }); }} className="text-xs underline">Corregir</button>
+                {editando === m.id && (
+                  <div className="mt-2 grid gap-2 rounded bg-slate-50 p-2 text-left">
+                    <input type="number" step="0.01" placeholder="Nuevo importe (opcional)" value={correccion.importe} onChange={(e) => setCorreccion({ ...correccion, importe: e.target.value })} className="rounded border border-slate-300 px-2 py-1 text-xs" />
+                    <input type="date" value={correccion.fecha} onChange={(e) => setCorreccion({ ...correccion, fecha: e.target.value })} className="rounded border border-slate-300 px-2 py-1 text-xs" />
+                    <input placeholder="Motivo de la corrección" value={correccion.motivo} onChange={(e) => setCorreccion({ ...correccion, motivo: e.target.value })} className="rounded border border-slate-300 px-2 py-1 text-xs" />
+                    <button onClick={() => corregir(m.id)} className="rounded bg-[#07152b] px-2 py-1 text-xs text-white">Guardar corrección</button>
+                  </div>
+                )}
+              </div>
+            ) },
+          ]}
+          data={ficha.movimientos}
+          keyExtractor={(m) => m.id}
+          emptyMessage="Sin movimientos"
+        />
       </div>
       {error && <p role="alert" className="text-red-700">{error}</p>}
     </div>

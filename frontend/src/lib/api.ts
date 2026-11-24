@@ -60,7 +60,7 @@ export const api = {
   resumenInversor: () => peticion<ResumenInversor>('/api/inversiones/resumen'),
   serie: (producto: string | null, periodo: string) =>
     peticion<{ datos: PuntoSerie[] }>(`/api/inversiones/serie?periodo=${periodo}${producto ? `&producto=${producto}` : ''}`),
-  movimientos: () => peticion<{ datos: Movimiento[] }>('/api/inversiones/movimientos?limite=20'),
+  movimientos: () => peticion<{ datos: Movimiento[] }>('/api/inversiones/movimientos?limite=1000'),
   rentabilidad: () => peticion<Rentabilidad>('/api/inversiones/rentabilidad'),
   cargasPlataforma: () => peticion<{ cargas: CargaPlataforma[] }>('/api/plataforma/cargas'),
   cambiarPassword: async (actual: string, nueva: string) => {
@@ -110,10 +110,17 @@ export const panelPlataforma = (empresa: string, inversor: string | null) => {
     resumen: () => peticion<ResumenInversor>(`/api/plataforma/panel/resumen?${qs}`),
     serie: (producto: string | null, periodo: string) =>
       peticion<{ datos: PuntoSerie[] }>(`/api/plataforma/panel/serie?${qs}&periodo=${periodo}${producto ? `&producto=${producto}` : ''}`),
-    movimientos: () => peticion<{ datos: Movimiento[] }>(`/api/plataforma/panel/movimientos?${qs}&limite=20`),
+    movimientos: () => peticion<{ datos: Movimiento[] }>(`/api/plataforma/panel/movimientos?${qs}&limite=1000`),
     rentabilidad: () => peticion<Rentabilidad>(`/api/plataforma/panel/rentabilidad?${qs}`),
   };
 };
+export interface ResumenInversores {
+  totalInversores: number; activos: number;
+  porCategoria: { producto: Producto; inversoresActivos: number }[];
+  evolucion: { mes: string; altas: number; bajas: number; total: number }[];
+}
+export const resumenInversores = (empresa: string) =>
+  peticion<ResumenInversores>(`/api/plataforma/panel/resumen-inversores?empresa=${encodeURIComponent(empresa)}`);
 export const panelInversores = (empresa: string) =>
   peticion<{ inversores: { id: string; nombre: string; email: string; activo: boolean }[] }>(`/api/plataforma/panel/inversores?empresa=${encodeURIComponent(empresa)}`);
 
@@ -142,7 +149,7 @@ export interface PuntoSerie { fecha: string; valor: number; capitalAportado: num
 export interface Movimiento { id: string; tipo: string; importe: number; fecha: string; producto: Producto }
 export type Producto = 'BOT_TRADING' | 'PROYECTO_CRYPTO' | 'TOKEN_SHARE';
 
-export interface RentabilidadMes { mes: string; parcial: boolean; rentabilidadPct: number; acumuladaPct: number; valorFin: number }
+export interface RentabilidadMes { mes: string; parcial: boolean; rentabilidadPct: number; acumuladaPct: number; valorFin: number; gananciaEur: number }
 export interface Rentabilidad { meses: RentabilidadMes[]; rentabilidadAnualizadaPct: number | null; ultimaCarga: string | null; proximaCarga: string | null; frecuencia: 'semanal' }
 export interface CargaPlataforma {
   id: string; fechaCarga: string; origen: string; estado: 'OK' | 'ERROR';

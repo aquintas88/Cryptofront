@@ -47,6 +47,14 @@ describe('panel de inversiones de la plataforma', () => {
     expect(res.status).toBe(400);
   });
 
+  it('el resumen de inversores trae las tres categorías y la evolución', async () => {
+    const res = await request(app).get(`/api/plataforma/panel/resumen-inversores?empresa=${empresaId}`).set('Authorization', `Bearer ${superToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.porCategoria.map((c: { producto: string }) => c.producto)).toEqual(['BOT_TRADING', 'PROYECTO_CRYPTO', 'TOKEN_SHARE']);
+    expect(Array.isArray(res.body.evolucion)).toBe(true);
+    expect(res.body.totalInversores).toBeGreaterThanOrEqual(1);
+  });
+
   it('un inversor no accede al panel de plataforma', async () => {
     const { usuario, password } = await crearUsuario({ tenantId: empresaId, rol: 'INVERSOR' });
     const token = await tokenDe(app, usuario.email, password);

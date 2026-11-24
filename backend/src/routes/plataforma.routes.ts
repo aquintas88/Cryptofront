@@ -45,7 +45,9 @@ router.get('/usuarios', asincrona(async (req, res) => {
     usuarios: await cuentas.listarUsuarios({
       tenantId: typeof q.tenantId === 'string' ? q.tenantId : undefined,
       rol: typeof q.rol === 'string' ? q.rol : undefined,
-      estado,
+      estado: q.estado === 'todos' ? 'todos' : estado,
+      dosFactores: q.dosFactores === 'si' ? true : q.dosFactores === 'no' ? false : undefined,
+      claveTemporal: q.claveTemporal === 'si' ? true : q.claveTemporal === 'no' ? false : undefined,
       q: typeof q.q === 'string' ? q.q.slice(0, 100) : undefined,
     }),
   });
@@ -136,6 +138,13 @@ async function contextoPanel(req: { query: Record<string, unknown> }, actorId: s
   return { ctx: { id: actorId, tenantId: empresa.id, rol: 'SUPERADMIN' }, inversorId, tenantId: empresa.id };
 }
 
+router.get('/panel/resumen-inversores', asincrona(async (req, res) => {
+  const empresaId = typeof req.query.empresa === 'string' ? req.query.empresa : '';
+  const empresa = await prisma.tenant.findFirst({ where: { id: empresaId, esPlataforma: false } });
+  if (!empresa) throw new ErrorApp(400, 'Empresa no válida');
+  res.json(await cuentas.resumenInversores(res.locals.usuario.id, empresa.id));
+}));
+
 router.get('/panel/inversores', asincrona(async (req, res) => {
   const empresaId = typeof req.query.empresa === 'string' ? req.query.empresa : '';
   const lista = await prisma.usuario.findMany({
@@ -167,7 +176,7 @@ router.get('/panel/serie', asincrona(async (req, res) => {
 
 router.get('/panel/movimientos', asincrona(async (req, res) => {
   const { ctx, inversorId } = await contextoPanel(req, res.locals.usuario.id);
-  const limite = Math.min(Math.max(Number(req.query.limite ?? 20) || 20, 1), 100);
+  const limite = Math.min(Math.max(Number(req.query.limite ?? 20) || 20, 1), 1000);
   res.json({ datos: await inv.movimientosInversor(ctx, limite, inversorId) });
 }));
 

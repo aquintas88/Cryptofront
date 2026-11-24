@@ -18,8 +18,10 @@ const TIPOS_MANUALES: TipoMovimiento[] = ['APORTACION', 'RETIRADA'];
 export interface FiltrosUsuarios {
   tenantId?: string;
   rol?: string;
-  estado?: 'activo' | 'inactivo' | 'bloqueado';
+  estado?: 'activo' | 'inactivo' | 'bloqueado' | 'todos';
   q?: string;
+  dosFactores?: boolean;
+  claveTemporal?: boolean;
 }
 
 function rolValido(valor: unknown): Rol {
@@ -53,6 +55,8 @@ export async function listarUsuarios(f: FiltrosUsuarios) {
   if (f.estado === 'activo') where.activo = true;
   if (f.estado === 'inactivo') where.activo = false;
   if (f.estado === 'bloqueado') where.bloqueadoHasta = { gt: ahora };
+  if (f.dosFactores !== undefined) where.twoFactorActivo = f.dosFactores;
+  if (f.claveTemporal !== undefined) where.debeCambiarPassword = f.claveTemporal;
   if (f.q) {
     where.OR = [{ email: { contains: f.q, mode: 'insensitive' } }, { nombre: { contains: f.q, mode: 'insensitive' } }];
   }
@@ -301,4 +305,54 @@ export async function exportarAuditoriaXlsx(actorId: string, tenantIdActor: stri
     cambios: { evento: 'exportación de auditoría', filas: filas.length },
   }));
   return Buffer.from(await libro.xlsx.writeBuffer());
+}
+
+// Resumen de inversores de una empresa: número por categoría (producto) y evolución mensual
+// de altas, bajas y total. Un inversor es de alta desde su primera posición y de baja cuando
+// todas sus posiciones están finalizadas.
+export async function resumenInversores(actorId: string, tenantId: string) {
+  const inversores = await prisma.usuario.findMany({ where: { tenantId, rol: 'INVERSOR' }, select: { id: true, activo: true } });
+  const posiciones = await conContextoPlataforma(actorId, tenantId, (tx) => tx.posicionInversion.findMany({
+    select: { inversorId: true, producto: true, estado: true, fechaAlta: true, fechaBaja: true },
+  }));
+  const categorias = ['BOT_TRADING', 'PROYECTO_CRYPTO', 'TOKEN_SHARE'] as const;
+  const porCategoria = categorias.map((producto) => {
+    const ids = new Set(posiciones.filter((p) => p.producto === producto && p.estado === 'ACTIVA').map((p) => p.inversorId));
+    return { producto, inversoresActivos: ids.size };
+  });
+  const porInversor = new Map<string, { alta: Date; baja: Date | null; activa: boolean }>();
+  for (const p of posiciones) {
+    const cur = porInversor.get(p.inversorId);
+    const alta = cur ? (p.fechaAlta < cur.alta ? p.fechaAlta : cur.alta) : p.fechaAlta;
+    const activa = (cur?.activa ?? false) || p.estado === 'ACTIVA';
+    const baja = p.estado === 'FINALIZADA' && p.fechaBaja ? (!cur?.baja || p.fechaBaja > cur.baja ? p.fechaBaja : cur.baja) : cur?.baja ?? null;
+    porInversor.set(p.inversorId, { alta, baja: activa ? null : baja, activa });
+  }
+  const mes = (d: Date) => d.toISOString().slice(0, 7);
+  const altas = new Map<string, number>();
+  const bajas = new Map<string, number>();
+  for (const v of porInversor.values()) {
+    altas.set(mes(v.alta), (altas.get(mes(v.alta)) ?? 0) + 1);
+    if (!v.activa && v.baja) bajas.set(mes(v.baja), (bajas.get(mes(v.baja)) ?? 0) + 1);
+  }
+  const claves = [...new Set([...altas.keys(), ...bajas.keys()])].sort();
+  let total = 0;
+  const evolucion = claves.length === 0 ? [] : (() => {
+    const [a0, m0] = claves[0].split('-').map(Number);
+    const [a1, m1] = claves[claves.length - 1].split('-').map(Number);
+    const salida: { mes: string; altas: number; bajas: number; total: number }[] = [];
+    for (let a = a0, m = m0; a < a1 || (a === a1 && m <= m1); m++) {
+      if (m > 12) { m = 1; a++; }
+      const k = `${a}-${String(m).padStart(2, '0')}`;
+      total += (altas.get(k) ?? 0) - (bajas.get(k) ?? 0);
+      salida.push({ mes: k, altas: altas.get(k) ?? 0, bajas: bajas.get(k) ?? 0, total });
+    }
+    return salida;
+  })();
+  return {
+    totalInversores: inversores.length,
+    activos: inversores.filter((i) => i.activo).length,
+    porCategoria,
+    evolucion,
+  };
 }

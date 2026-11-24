@@ -4,6 +4,8 @@ import { api, type RegistroAuditoria } from '../../lib/api';
 import { fechaHora } from '../../components/formato';
 import { Table, Pagination, type Column } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
+import { Input } from '../../components/ui/Input';
+import { sortBy, useSortable } from '../../components/ui/tabla';
 
 const POR_PAGINA = 20;
 const ENTIDADES = ['Usuario', 'Sesion', 'MovimientoInversion', 'CargaInversion', 'PosicionInversion', 'Tenant'];
@@ -27,21 +29,34 @@ export default function Auditoria() {
   const [detalle, setDetalle] = useState<RegistroAuditoria | null>(null);
   const [errorExport, setErrorExport] = useState<string | null>(null);
 
-  const filas = q.data?.registros ?? [];
+  const [texto, setTexto] = useState('');
+  const { sort, toggle } = useSortable<'creadoEn' | 'actor' | 'entidad' | 'accion'>('creadoEn', 'desc');
+  const filasBase = (q.data?.registros ?? []).map((r) => ({
+    ...r,
+    actorTexto: r.actor ? `${r.actor.nombre} ${r.actor.email}` : 'Sistema',
+    entidadTexto: ETIQUETA_ENTIDAD[r.entidad] ?? r.entidad,
+    detalle: resumen(r.cambios),
+  }));
+  const filtradas = filasBase.filter((r) => {
+    const t = texto.trim().toLowerCase();
+    return !t || `${r.actorTexto} ${r.entidadTexto} ${r.accion} ${r.detalle}`.toLowerCase().includes(t);
+  });
+  const filas = sortBy(filtradas, sort.field as keyof (typeof filtradas)[number], sort.dir);
   const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA));
   const visibles = filas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
-  const columnas: Column<RegistroAuditoria>[] = [
-    { key: 'creadoEn', header: 'Fecha y hora', render: (r) => fechaHora(r.creadoEn) },
-    { key: 'actor', header: 'Quién', render: (r) => r.actor ? `${r.actor.nombre} (${r.actor.email})` : 'Sistema' },
-    { key: 'entidad', header: 'Qué', render: (r) => ETIQUETA_ENTIDAD[r.entidad] ?? r.entidad },
-    { key: 'accion', header: 'Acción' },
-    { key: 'cambios', header: 'Detalle', className: 'max-w-md truncate text-slate-600', render: (r) => resumen(r.cambios) },
+  const columnas: Column<(typeof visibles)[number]>[] = [
+    { key: 'creadoEn', header: 'Fecha y hora', sortable: true, render: (r) => fechaHora(r.creadoEn) },
+    { key: 'actor', header: 'Quién', sortable: true, render: (r) => r.actor ? `${r.actor.nombre} (${r.actor.email})` : 'Sistema' },
+    { key: 'entidad', header: 'Qué', sortable: true, render: (r) => r.entidadTexto },
+    { key: 'accion', header: 'Acción', sortable: true },
+    { key: 'detalle', header: 'Detalle', className: 'max-w-md truncate text-slate-600' },
   ];
 
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
+        <div className="w-64"><Input label="Buscar" placeholder="Quién, qué o detalle" value={texto} onChange={(e) => { setTexto(e.target.value); setPagina(1); }} /></div>
         <select value={filtros.entidad} onChange={(e) => { setFiltros({ ...filtros, entidad: e.target.value }); setPagina(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
           <option value="">Todo tipo</option>
           {ENTIDADES.map((x) => <option key={x} value={x}>{ETIQUETA_ENTIDAD[x]}</option>)}
@@ -65,7 +80,7 @@ export default function Auditoria() {
       </div>
       {errorExport && <p role="alert" className="text-sm text-red-700">{errorExport}</p>}
       {q.isError && <p className="text-sm text-red-700">No se pudo cargar la auditoría.</p>}
-      <Table columns={columnas} data={visibles} keyExtractor={(r) => r.id} onRowClick={setDetalle} emptyMessage="Sin registros con esos filtros" />
+      <Table columns={columnas} data={visibles} keyExtractor={(r) => r.id} onRowClick={setDetalle} sortKey={sort.field} sortDir={sort.dir} onSort={(k) => { toggle(k as typeof sort.field); setPagina(1); }} emptyMessage="Sin registros con esos filtros" />
       <Pagination page={pagina} totalPages={totalPaginas} onPage={setPagina} total={filas.length} />
 
       {detalle && (

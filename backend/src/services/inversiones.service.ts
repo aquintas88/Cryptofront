@@ -185,7 +185,7 @@ export async function rentabilidadInversor(u: UsuarioContexto, inversorId: strin
   const d = await cargar(u, inversorId);
   const carga = await ultimaCarga(u.tenantId);
   const raw = rentabilidadMeses(d);
-  const meses = raw.map(({ gananciaEur: _g, factor: _f, ...resto }) => resto);
+  const meses = raw.map(({ factor: _f, ...resto }) => resto);
   const primera = d.posiciones[0]?.fechaAlta;
   const rentabilidadAnualizadaPct = primera ? rentabilidadAnualizada(raw, primera) : null;
   return { meses, rentabilidadAnualizadaPct, ...carga };

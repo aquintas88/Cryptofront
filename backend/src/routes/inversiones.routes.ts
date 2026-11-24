@@ -28,7 +28,7 @@ router.get('/serie', requiereRol('INVERSOR'), asincrona(async (req, res) => {
 }));
 
 router.get('/movimientos', requiereRol('INVERSOR'), asincrona(async (req, res) => {
-  const limite = Math.min(Math.max(Number(req.query.limite ?? 20) || 20, 1), 100);
+  const limite = Math.min(Math.max(Number(req.query.limite ?? 20) || 20, 1), 1000);
   res.json({ datos: await inv.movimientosInversor(res.locals.usuario, limite) });
 }));
 
