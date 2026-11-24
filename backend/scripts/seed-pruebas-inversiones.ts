@@ -176,7 +176,7 @@ async function main() {
         }
       }
     }
-  });
+  }, { timeout: 15 * 60 * 1000 });
 
   console.log(`Creado: empresa "${NOMBRE_EMPRESA}" con ${N_INVERSORES} inversores de prueba (inversor001..${String(N_INVERSORES).padStart(3, '0')}@ejemplo.test).`);
 }

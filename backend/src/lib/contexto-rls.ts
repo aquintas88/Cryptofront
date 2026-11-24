@@ -19,6 +19,7 @@ export function accesoTotal(rol: string): boolean {
 export async function conContextoRls<T>(
   usuario: UsuarioContexto,
   operacion: (tx: Prisma.TransactionClient) => Promise<T>,
+  opciones: { timeout?: number } = {},
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT
@@ -26,7 +27,7 @@ export async function conContextoRls<T>(
       set_config('app.usuario_id', ${usuario.id}, true),
       set_config('app.acceso_total', ${accesoTotal(usuario.rol) ? 'on' : 'off'}, true)`;
     return operacion(tx);
-  });
+  }, { timeout: opciones.timeout ?? 5000 });
 }
 
 // Operación de la plataforma (SUPERADMIN) sobre una empresa concreta: acceso de gestión a esa empresa.

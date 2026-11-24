@@ -24,15 +24,28 @@ interface Datos {
   valores: { posicionId: string; fecha: Date; valor: unknown }[];
 }
 
+// Agrupa movimientos y valores por posición una sola vez, ordenados por fecha.
+function indexarPorPosicion<T extends { posicionId: string; fecha: Date }>(filas: T[]) {
+  const mapa = new Map<string, T[]>();
+  for (const f of filas) {
+    const lista = mapa.get(f.posicionId);
+    if (lista) lista.push(f); else mapa.set(f.posicionId, [f]);
+  }
+  for (const lista of mapa.values()) lista.sort((x, y) => +x.fecha - +y.fecha);
+  return mapa;
+}
+
 function agregarPorPosicion(d: Datos) {
+  const movPor = indexarPorPosicion(d.movimientos);
+  const valPor = indexarPorPosicion(d.valores);
   return d.posiciones.map((p) => {
-    const movs = d.movimientos.filter((m) => m.posicionId === p.id);
+    const movs = movPor.get(p.id) ?? [];
     const suma = (tipo: string) => movs.filter((m) => m.tipo === tipo).reduce((s, m) => s + num(m.importe), 0);
     const aportado = suma('APORTACION') || num(p.capitalAportado);
     const retirado = suma('RETIRADA');
     const rendimientos = suma('RENDIMIENTO') + suma('REPARTO');
     const comisiones = suma('COMISION');
-    const valoresP = d.valores.filter((v) => v.posicionId === p.id).sort((a, b) => +a.fecha - +b.fecha);
+    const valoresP = valPor.get(p.id) ?? [];
     const valorActual = p.producto === 'BOT_TRADING' && valoresP.length
       ? num(valoresP[valoresP.length - 1].valor)
       : aportado + rendimientos - retirado;
@@ -41,27 +54,46 @@ function agregarPorPosicion(d: Datos) {
 }
 
 // Serie diaria: patrimonio y capital aportado acumulado, desde la primera posición hasta hoy.
+// Cada posición avanza con punteros sobre sus movimientos y valores ordenados: coste lineal.
 function serie(d: Datos, producto: Producto | null, desde: Date) {
   const hoy = new Date();
-  const posiciones = agregarPorPosicion(d).filter((p) => !producto || p.producto === producto);
+  const movPor = indexarPorPosicion(d.movimientos);
+  const valPor = indexarPorPosicion(d.valores);
+  const estados = agregarPorPosicion(d)
+    .filter((p) => !producto || p.producto === producto)
+    .map((p) => ({
+      p,
+      movs: movPor.get(p.id) ?? [],
+      vals: valPor.get(p.id) ?? [],
+      iMov: 0,
+      iVal: 0,
+      sumas: { APORTACION: 0, RETIRADA: 0, RENDIMIENTO: 0, REPARTO: 0 } as Record<string, number>,
+      valorDia: null as number | null,
+    }));
   const puntos: { fecha: string; valor: number; capitalAportado: number }[] = [];
   for (let t = +desde; t <= +hoy; t += 86_400_000) {
     const dia = new Date(t);
     const fin = t + 86_400_000 - 1;
     let valor = 0;
     let capital = 0;
-    for (const p of posiciones) {
-      if (+p.fechaAlta > fin) continue;
+    for (const e of estados) {
+      if (+e.p.fechaAlta > fin) continue;
       // Solo lo aportado hasta este día: las aportaciones posteriores no cuentan aún.
-      const mov = d.movimientos.filter((m) => m.posicionId === p.id && +m.fecha <= fin);
-      const acum = (tipo: string) => mov.filter((m) => m.tipo === tipo).reduce((s, m) => s + num(m.importe), 0);
-      const aportadoHasta = acum('APORTACION') || num(p.capitalAportado);
+      while (e.iMov < e.movs.length && +e.movs[e.iMov].fecha <= fin) {
+        const m = e.movs[e.iMov];
+        if (m.tipo in e.sumas) e.sumas[m.tipo] += num(m.importe);
+        e.iMov++;
+      }
+      while (e.iVal < e.vals.length && +e.vals[e.iVal].fecha <= fin) {
+        e.valorDia = num(e.vals[e.iVal].valor);
+        e.iVal++;
+      }
+      const aportadoHasta = e.sumas.APORTACION || num(e.p.capitalAportado);
       capital += aportadoHasta;
-      if (p.producto === 'BOT_TRADING') {
-        const vs = d.valores.filter((v) => v.posicionId === p.id && +v.fecha <= fin).sort((a, b) => +b.fecha - +a.fecha);
-        valor += vs.length ? num(vs[0].valor) : aportadoHasta;
+      if (e.p.producto === 'BOT_TRADING') {
+        valor += e.valorDia ?? aportadoHasta;
       } else {
-        valor += aportadoHasta + acum('RENDIMIENTO') + acum('REPARTO') - acum('RETIRADA');
+        valor += aportadoHasta + e.sumas.RENDIMIENTO + e.sumas.REPARTO - e.sumas.RETIRADA;
       }
     }
     puntos.push({ fecha: dia.toISOString().slice(0, 10), valor: redondear(valor), capitalAportado: redondear(capital) });
