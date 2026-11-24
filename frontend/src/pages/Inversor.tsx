@@ -22,7 +22,6 @@ export default function Inversor() {
         <nav className="flex items-center gap-6 text-sm">
           <span className="border-b-2 border-[#c9a24a] pb-1">{z.cabecera.patrimonio}</span>
           <span className="opacity-70">{z.cabecera.movimientos}</span>
-          <span className="opacity-70">{z.cabecera.informes}</span>
           <span className="opacity-70">{z.cabecera.ayuda}</span>
           <span className="rounded-full bg-[#c9a24a] px-2.5 py-1 text-xs font-bold text-[#0d2240]">
             {usuario?.nombre.split(' ').map((p) => p[0]).slice(0, 2).join('')}

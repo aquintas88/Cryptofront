@@ -211,20 +211,6 @@ export function PanelInversion({ clave, fuentes, idioma, titulo, cabeceraExtra }
         <Pagination page={pagMov} totalPages={movPaginas} onPage={setPagMov} total={movOrdenados.length} />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h2 className="font-serif text-xl">{z.informes}</h2>
-          <ul className="mt-3 space-y-3 text-sm">
-            {z.listaInformes.map((t) => (
-              <li key={t} className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span>{t}</span>
-                <span className="rounded border border-[#c9a24a] px-2 py-0.5 text-xs text-[#b08a3e]">{z.proximamente}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
       <p className="text-xs text-slate-500">{z.aviso}</p>
     </div>
   );
