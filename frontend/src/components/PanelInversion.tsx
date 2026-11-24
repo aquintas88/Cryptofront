@@ -93,6 +93,11 @@ export function PanelInversion({ clave, fuentes, idioma, titulo, cabeceraExtra }
       {cabeceraExtra}
 
       {resumen.isError && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{z.errorResumen}</p>}
+      {(serie.isError || renta.isError || movs.isError) && (
+        <p className="rounded bg-red-50 p-3 text-sm text-red-700">
+          No se han podido cargar todos los datos del panel: {[resumen, serie, renta, movs].map((q) => q.error instanceof Error ? q.error.message : '').filter(Boolean)[0] ?? 'error de conexión'}. Recargue la página o vuelva a entrar.
+        </p>
+      )}
       {r && (
         <section className="rounded-xl bg-[#0d2240] p-6 text-white">
           <p className="text-xs tracking-widest opacity-70">{z.patrimonioHoy}</p>
