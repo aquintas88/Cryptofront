@@ -10,6 +10,7 @@ import { generarClaveTemporal } from '../lib/claves';
 import { registrarAuditoria, diferencias } from '../lib/auditoria';
 import { conContextoPlataforma } from '../lib/contexto-rls';
 import { esDuplicado } from './plataforma.service';
+import { invalidarAcumulado } from './inversiones.service';
 
 const ROLES: Rol[] = ['SUPERADMIN', 'INVERSOR'];
 const PRODUCTOS: ProductoInversion[] = ['BOT_TRADING', 'PROYECTO_CRYPTO', 'TOKEN_SHARE'];
@@ -234,6 +235,7 @@ export async function crearMovimiento(actorId: string, id: string, datos: { tipo
       tenantId: u.tenantId, actorId, entidad: 'MovimientoInversion', entidadId: creado.id, accion: 'CREAR',
       cambios: { tipo: creado.tipo, importe, fecha: fecha.toISOString(), producto: datos.producto, motivo },
     });
+    invalidarAcumulado(u.tenantId);
     return { ...creado, importe: Number(creado.importe) };
   });
 }
@@ -256,6 +258,7 @@ export async function corregirMovimiento(actorId: string, id: string, movId: str
       tenantId: u.tenantId, actorId, entidad: 'MovimientoInversion', entidadId: movId, accion: 'EDITAR',
       cambios: { ...dif, motivo },
     });
+    invalidarAcumulado(u.tenantId);
     return { id: despues.id, importe: Number(despues.importe), fecha: despues.fecha };
   });
 }

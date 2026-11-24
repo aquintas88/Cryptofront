@@ -273,6 +273,7 @@ function FichaInversorView({ id }: { id: string }) {
   const [editando, setEditando] = useState<string | null>(null);
   const [correccion, setCorreccion] = useState({ importe: '', fecha: '', motivo: '' });
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const ficha = q.data as FichaInversor | undefined;
 
   async function registrar(e: React.FormEvent) {
@@ -280,6 +281,7 @@ function FichaInversorView({ id }: { id: string }) {
     try {
       await api.plataforma.crearMovimiento(id, { ...alta, importe: Number(alta.importe) });
       setAlta({ ...alta, importe: '', motivo: '' });
+      setAviso('Cambio manual registrado en la auditoría. Los paneles ya muestran el dato actualizado.');
       void q.refetch();
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo registrar el movimiento'); }
   }
@@ -292,6 +294,7 @@ function FichaInversorView({ id }: { id: string }) {
       if (correccion.fecha) datos.fecha = correccion.fecha;
       await api.plataforma.corregirMovimiento(id, movId, datos);
       setEditando(null);
+      setAviso('Corrección registrada en la auditoría con su motivo. Los paneles ya muestran el dato actualizado.');
       void q.refetch();
     } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo corregir el movimiento'); }
   }
@@ -311,6 +314,7 @@ function FichaInversorView({ id }: { id: string }) {
         )}
       </div>
 
+      {aviso && <p role="status" className="rounded bg-emerald-50 p-3 text-sm text-emerald-800">{aviso}</p>}
       <form onSubmit={registrar} className="grid gap-2 rounded-lg bg-slate-50 p-3 md:grid-cols-6">
         <p className="text-xs font-semibold md:col-span-6">Registrar movimiento manual (corrección o ajuste; queda auditado)</p>
         <select value={alta.tipo} onChange={(e) => setAlta({ ...alta, tipo: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm">

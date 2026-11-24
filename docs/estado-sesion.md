@@ -44,3 +44,9 @@ Documento para retomar el trabajo en una sesión nueva. Fuente de verdad: el có
 - Verificación en PRE: `/health` con 200 por el dominio público; `/api/inversiones/rentabilidad` y `/api/plataforma/cargas` con las cuentas de prueba.
 - Backend: `npx vitest run` (205 pruebas) y `npx tsc --noEmit`.
 - Frontend: `npx tsc --noEmit` y `npx vite build`.
+
+
+## Aviso: cambios manuales y caché del panel
+- El acumulado de la empresa se guarda en memoria del backend durante 2 minutos.
+- Los cambios hechos desde la aplicación (alta de movimientos, correcciones) vacían esa caché al momento.
+- Los cambios hechos directamente en la base de datos (scripts de carga o de datos de prueba, consultas manuales) no la vacían: reiniciar el backend o esperar 2 minutos.

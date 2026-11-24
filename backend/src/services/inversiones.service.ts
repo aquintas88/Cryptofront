@@ -101,6 +101,11 @@ function serie(d: Datos, producto: Producto | null, desde: Date) {
   return puntos;
 }
 
+// Se llama tras cualquier cambio manual o de carga para que los paneles lo muestren de inmediato.
+export function invalidarAcumulado(tenantId: string) {
+  cacheAcumulado.delete(tenantId);
+}
+
 // Lectura del acumulado de una empresa (plataforma): se reutiliza unos minutos entre los paneles que
 // la piden a la vez. Los datos solo cambian con las cargas semanales, así que el margen es seguro.
 const TTL_ACUMULADO_MS = 2 * 60 * 1000;
