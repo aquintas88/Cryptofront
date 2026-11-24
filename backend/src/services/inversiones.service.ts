@@ -101,8 +101,13 @@ function serie(d: Datos, producto: Producto | null, desde: Date) {
   return puntos;
 }
 
+// Lectura del acumulado de una empresa (plataforma): se reutiliza unos minutos entre los paneles que
+// la piden a la vez. Los datos solo cambian con las cargas semanales, así que el margen es seguro.
+const TTL_ACUMULADO_MS = 2 * 60 * 1000;
+const cacheAcumulado = new Map<string, { hasta: number; datos: Promise<Datos> }>();
+
 async function cargar(u: UsuarioContexto, inversorId: string | null) {
-  return conContextoRls(u, async (tx) => {
+  const leer = () => conContextoRls(u, async (tx) => {
     const filtro = inversorId ? { inversorId } : {};
     const [posiciones, movimientos, valores] = await Promise.all([
       tx.posicionInversion.findMany({ where: filtro, orderBy: { fechaAlta: 'asc' } }),
@@ -111,6 +116,16 @@ async function cargar(u: UsuarioContexto, inversorId: string | null) {
     ]);
     return { posiciones, movimientos, valores } as Datos;
   });
+  if (inversorId !== null) return leer();
+  const clave = u.tenantId;
+  const ahora = Date.now();
+  const entrada = cacheAcumulado.get(clave);
+  if (entrada && entrada.hasta > ahora) return entrada.datos;
+  const datos = leer();
+  cacheAcumulado.set(clave, { hasta: ahora + TTL_ACUMULADO_MS, datos });
+  // Si la lectura falla, no se deja en caché.
+  datos.catch(() => cacheAcumulado.delete(clave));
+  return datos;
 }
 
 // inversorId: el propio inversor (por defecto) o, para la plataforma, un inversor concreto. null = acumulado de la empresa.
