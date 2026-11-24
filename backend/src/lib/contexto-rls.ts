@@ -27,7 +27,7 @@ export async function conContextoRls<T>(
       set_config('app.usuario_id', ${usuario.id}, true),
       set_config('app.acceso_total', ${accesoTotal(usuario.rol) ? 'on' : 'off'}, true)`;
     return operacion(tx);
-  }, { timeout: opciones.timeout ?? 5000 });
+  }, { timeout: opciones.timeout ?? 30000 });
 }
 
 // Operación de la plataforma (SUPERADMIN) sobre una empresa concreta: acceso de gestión a esa empresa.
