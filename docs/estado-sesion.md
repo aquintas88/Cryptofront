@@ -50,3 +50,29 @@ Documento para retomar el trabajo en una sesión nueva. Fuente de verdad: el có
 - El acumulado de la empresa se guarda en memoria del backend durante 2 minutos.
 - Los cambios hechos desde la aplicación (alta de movimientos, correcciones) vacían esa caché al momento.
 - Los cambios hechos directamente en la base de datos (scripts de carga o de datos de prueba, consultas manuales) no la vacían: reiniciar el backend o esperar 2 minutos.
+
+
+## Estado actual (24/11/2026)
+
+**Desplegado en PRE** (rama `prepro`, último commit `4bf3989`, CI en verde; backend y frontend redesplegados).
+
+**Datos de prueba**
+- Empresa «Cryptofront» con 300 inversores (`inversor001…300@ejemplo.test`), histórico desde enero de 2025 y cargas semanales desde el 6/01/2025.
+- Cuentas superadmin: `superadmin@ejemplo.test` y la cuenta de Adri (`aquintas@gmail.com`, ahora SUPERADMIN).
+- Contraseña común de las cuentas de prueba: variable `SEED_PASSWORD` en Railway (no se escribe aquí).
+
+**Roles**: SUPERADMIN e INVERSOR. Las cuentas con los roles eliminados se han desactivado.
+
+**Zona de superadmin**: panel de inversiones (acumulado o por inversor, con resumen de inversores, rentabilidad mensual y anual y movimientos), cargas, usuarios (filtros, claves temporales, bloqueos, ficha de inversor con altas y correcciones de movimientos) y auditoría (filtros, orden, exportación a Excel).
+
+**Zona de inversores**: solo consulta. Sin informes (eliminados).
+
+**Rendimiento**: el acumulado responde en unos 2 s en frío y menos de 1 s con la caché de 2 minutos. Los cambios manuales desde la aplicación vacían la caché al momento; los cambios directos en la base de datos no (reiniciar el backend o esperar 2 minutos).
+
+**Pendiente**
+- Contrato v6 (prompt en mi mensaje anterior) y revisión jurídica.
+- Correo a Adri: pendiente de su respuesta (comisiones, Excel, datos de la sociedad, alojamiento).
+- Subida del Excel desde la pantalla: pendiente de construir (botón desactivado).
+- Revisión de traducciones por Cryptofront.
+- Historia de `prepro`: reescrita con push forzado autorizado (`1bdbe18` y posteriores).
+- Pruebas del panel con 300 inversores en pantalla: revisadas por API, no visualmente en todas las vistas.
