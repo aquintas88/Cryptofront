@@ -339,7 +339,8 @@ export async function resumenInversores(actorId: string, tenantId: string) {
   let total = 0;
   const evolucion = claves.length === 0 ? [] : (() => {
     const [a0, m0] = claves[0].split('-').map(Number);
-    const [a1, m1] = claves[claves.length - 1].split('-').map(Number);
+    const hoy = new Date();
+    const [a1, m1] = [hoy.getUTCFullYear(), hoy.getUTCMonth() + 1];
     const salida: { mes: string; altas: number; bajas: number; total: number }[] = [];
     for (let a = a0, m = m0; a < a1 || (a === a1 && m <= m1); m++) {
       if (m > 12) { m = 1; a++; }
