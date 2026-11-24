@@ -10,14 +10,14 @@ async function main() {
   const password = process.env.SEED_PASSWORD;
   if (!password || password.length < 12) throw new Error('Define SEED_PASSWORD (mínimo 12 caracteres)');
 
-  const empresa = await prisma.tenant.findFirst({ where: { nombre: 'Cryptofront (pruebas)' } });
+  const empresa = await prisma.tenant.findFirst({ where: { nombre: 'Cryptofront' } });
   if (!empresa) throw new Error('Falta la empresa de pruebas: ejecuta antes el seed de inversiones');
   if ((await prisma.cargaInversion.count({ where: { tenantId: empresa.id } })) === 0) {
-    const primerLunes = Date.UTC(2026, 0, 5, 0, 30);
-    const ultimo = Date.UTC(2026, 10, 16, 0, 30);
+    const primerLunes = Date.UTC(2025, 0, 6, 0, 30);
+    const ultimo = Date.UTC(2026, 10, 23, 0, 30);
     const datos = [];
     for (let t = primerLunes, n = 0; t <= ultimo; t += 7 * DIA, n++) {
-      const incidencia = new Date(t).toISOString().slice(0, 10) === '2026-06-15';
+      const incidencia = new Date(t).toISOString().slice(0, 10) === '2026-06-15' || new Date(t).toISOString().slice(0, 10) === '2025-09-22';
       datos.push({
         tenantId: empresa.id,
         fechaCarga: new Date(t),
