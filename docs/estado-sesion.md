@@ -69,6 +69,8 @@ Documento para retomar el trabajo en una sesión nueva. Fuente de verdad: el có
 
 **Rendimiento**: el acumulado responde en unos 2 s en frío y menos de 1 s con la caché de 2 minutos. Los cambios manuales desde la aplicación vacían la caché al momento; los cambios directos en la base de datos no (reiniciar el backend o esperar 2 minutos).
 
+**Comercial**: oferta enviada a Adri el 24/11/2026. Pendiente de su aceptación antes de enviar el contrato.
+
 **Pendiente**
 - Contrato v6 (prompt en mi mensaje anterior) y revisión jurídica.
 - Correo a Adri: pendiente de su respuesta (comisiones, Excel, datos de la sociedad, alojamiento).
