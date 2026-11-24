@@ -53,6 +53,15 @@ export default function PanelPlataforma() {
         </div>
       </div>
 
+      <PanelInversion
+        key={`${empresaActiva}-${inversor}`}
+        clave={`panel-${empresaActiva}-${inversor || 'todos'}`}
+        fuentes={panelPlataforma(empresaActiva, inversor || null)}
+        idioma="es"
+        titulo={inversor ? `Panel de ${nombreInversor ?? 'inversor'}` : `Acumulado · ${nombreEmpresa}`}
+        cabeceraExtra={<p className="text-xs text-slate-500">Vista de superadmin. Las consultas de un inversor concreto quedan registradas en la auditoría.</p>}
+      />
+
       {!inversor && resumen.data && (
         <section className="space-y-4 rounded-xl bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -75,14 +84,6 @@ export default function PanelPlataforma() {
         </section>
       )}
 
-      <PanelInversion
-        key={`${empresaActiva}-${inversor}`}
-        clave={`panel-${empresaActiva}-${inversor || 'todos'}`}
-        fuentes={panelPlataforma(empresaActiva, inversor || null)}
-        idioma="es"
-        titulo={inversor ? `Panel de ${nombreInversor ?? 'inversor'}` : `Acumulado · ${nombreEmpresa}`}
-        cabeceraExtra={<p className="text-xs text-slate-500">Vista de superadmin. Las consultas de un inversor concreto quedan registradas en la auditoría.</p>}
-      />
     </section>
   );
 }
